@@ -1,14 +1,23 @@
 package com.app.library.model;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+
+@Entity
+
 public class Book {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private String title;
     private String author;
     private int publicationYear;
     private String genre;
     private int availableCopies;
+    private String isbn;
 
     // Default constructor
     public Book() {}
@@ -23,6 +32,13 @@ public class Book {
     }
 
     // Getters and Setters
+    public String getIsbn() {
+        return isbn;
+    }
+
+    public void setIsbn(String isbn) {
+        this.isbn = isbn;
+    }
     public Long getId() {
         return id;
     }
@@ -81,6 +97,7 @@ public class Book {
                 ", publicationYear=" + publicationYear +
                 ", genre='" + genre + '\'' +
                 ", availableCopies=" + availableCopies +
+                ", isbn='" + isbn + '\'' +
                 '}';
     }
 }

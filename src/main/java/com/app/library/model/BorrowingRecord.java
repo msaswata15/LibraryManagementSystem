@@ -1,11 +1,25 @@
+
 package com.app.library.model;
 
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.ManyToOne;
 import java.time.LocalDate;
 
+@Entity
 public class BorrowingRecord {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne
     private Book book;
+
+    @ManyToOne
     private Member member;
 
     private LocalDate borrowDate;
@@ -83,5 +97,14 @@ public class BorrowingRecord {
                 ", returnDate=" + returnDate +
                 ", dueDate=" + dueDate +
                 '}';
+    }
+
+    // Helper methods for REST API compatibility
+    public Long getBookId() {
+        return book != null ? book.getId() : null;
+    }
+
+    public Long getMemberId() {
+        return member != null ? member.getId() : null;
     }
 }
