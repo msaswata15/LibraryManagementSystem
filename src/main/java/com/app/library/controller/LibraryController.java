@@ -140,19 +140,29 @@ public class LibraryController {
     // Borrow a book
     @PostMapping("/borrow")
     public ResponseEntity<BorrowingRecord> borrowBook(@RequestBody BorrowingRecord record) {
-        // Set borrow date and due date (e.g., due date = borrow date + 14 days)
-        record.setBorrowDate(LocalDate.now());
-        record.setDueDate(LocalDate.now().plusDays(14));
-        libraryService.borrowBook(record);
-        logger.info("The book has been borrowed "+record);
-        return new ResponseEntity<>(record, HttpStatus.CREATED);
+        try {
+            // Set borrow date and due date (e.g., due date = borrow date + 14 days)
+            record.setBorrowDate(LocalDate.now());
+            record.setDueDate(LocalDate.now().plusDays(14));
+            libraryService.borrowBook(record);
+            logger.info("The book has been borrowed " + record);
+            return new ResponseEntity<>(record, HttpStatus.CREATED);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            logger.error("Error borrowing book: " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
     }
 
     // Return a book
     @PutMapping("/return/{recordId}")
     public ResponseEntity<Void> returnBook(@PathVariable Long recordId) {
-        libraryService.returnBook(recordId, LocalDate.now());
-        logger.info("The book has been retrieved "+recordId);
-        return new ResponseEntity<>(HttpStatus.OK);
+        try {
+            libraryService.returnBook(recordId, LocalDate.now());
+            logger.info("The book has been returned " + recordId);
+            return new ResponseEntity<>(HttpStatus.OK);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            logger.error("Error returning book: " + e.getMessage());
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
     }
 }
