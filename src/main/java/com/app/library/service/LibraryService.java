@@ -18,6 +18,11 @@ public class LibraryService {
     private List<Book> books = new ArrayList<>();
     private List<Member> members = new ArrayList<>();
     private List<BorrowingRecord> borrowingRecords = new ArrayList<>();
+    
+    // Simple ID generation (for in-memory storage)
+    private Long nextBookId = 1L;
+    private Long nextMemberId = 1L;
+    private Long nextRecordId = 1L;
 
     // ==================== Book Methods ====================
 
@@ -35,6 +40,7 @@ public class LibraryService {
 
     // Add a new book
     public void addBook(Book book) {
+        book.setId(nextBookId++);
         books.add(book);
     }
 
@@ -70,6 +76,7 @@ public class LibraryService {
 
     // Add a new member
     public void addMember(Member member) {
+        member.setId(nextMemberId++);
         members.add(member);
     }
 
@@ -98,27 +105,73 @@ public class LibraryService {
 
     // Borrow a book (create a new borrowing record)
     public void borrowBook(BorrowingRecord record) {
-        // Set borrow date and due date (e.g., due date = borrow date + 14 days)
-        record.setBorrowDate(LocalDate.now());
-        record.setDueDate(LocalDate.now().plusDays(14));
+        // Validate that book exists and has available copies
+        Book book = record.getBook();
+        if (book == null || book.getId() == null) {
+            throw new IllegalArgumentException("Book or Book ID cannot be null");
+        }
+        
+        // Find the actual book in our storage by ID
+        Optional<Book> actualBook = getBookById(book.getId());
+        if (!actualBook.isPresent()) {
+            throw new IllegalArgumentException("Book does not exist");
+        }
+        book = actualBook.get();
+        record.setBook(book); // Update record with the actual book from storage
+        
+        // Validate that member exists
+        Member member = record.getMember();
+        if (member == null || member.getId() == null) {
+            throw new IllegalArgumentException("Member or Member ID cannot be null");
+        }
+        
+        // Find the actual member in our storage by ID
+        Optional<Member> actualMember = getMemberById(member.getId());
+        if (!actualMember.isPresent()) {
+            throw new IllegalArgumentException("Member does not exist");
+        }
+        member = actualMember.get();
+        record.setMember(member); // Update record with the actual member from storage
+        
+        // Check if copies are available
+        if (book.getAvailableCopies() <= 0) {
+            throw new IllegalStateException("No copies of this book are available");
+        }
+        
+        // Generate ID for the borrowing record
+        record.setId(nextRecordId++);
+        
+        // Note: Dates should be set by the controller, not here
+        // This avoids duplicate date setting
         borrowingRecords.add(record);
 
         // Decrease the available copies of the book
-        Book book = record.getBook();
         book.setAvailableCopies(book.getAvailableCopies() - 1);
     }
 
     // Return a book (update the borrowing record with the return date)
     public void returnBook(Long recordId, LocalDate returnDate) {
+        if (recordId == null) {
+            throw new IllegalArgumentException("Record ID cannot be null");
+        }
+        
         for (BorrowingRecord record : borrowingRecords) {
-            if (record.getId().equals(recordId)) {
+            if (record.getId() != null && record.getId().equals(recordId)) {
+                // Check if book was already returned
+                if (record.getReturnDate() != null) {
+                    throw new IllegalStateException("Book has already been returned");
+                }
+                
                 record.setReturnDate(returnDate);
 
                 // Increase the available copies of the book
                 Book book = record.getBook();
-                book.setAvailableCopies(book.getAvailableCopies() + 1);
-                break;
+                if (book != null) {
+                    book.setAvailableCopies(book.getAvailableCopies() + 1);
+                }
+                return;
             }
         }
+        throw new IllegalArgumentException("Borrowing record not found");
     }
 }
