@@ -1,13 +1,25 @@
 package com.app.library.controller;
 
-import com.app.library.model.Book;
-import com.app.library.service.BookService;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Optional;
+import com.app.library.model.Book;
+import com.app.library.service.BookService;
 
 @RestController
 @RequestMapping("/books")
@@ -18,6 +30,19 @@ public class BookController {
     @GetMapping
     public List<Book> getAllBooks() {
         return bookService.findAllBooks();
+    }
+
+    // --- New: Get available books with recommendations ---
+    @GetMapping("/recommended")
+    public Map<String, Object> getBooksAndRecommendations(@RequestParam(required = false) Long userId) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("availableBooks", bookService.findAllBooks());
+        // Recommendations: most borrowed + genre-based
+        List<Book> popular = bookService.getMostBorrowedBooks(5);
+        List<Book> genreBased = userId != null ? bookService.getGenreBasedRecommendations(userId, 5) : Collections.emptyList();
+        result.put("popularRecommendations", popular);
+        result.put("genreRecommendations", genreBased);
+        return result;
     }
 
     @GetMapping("/{id}")

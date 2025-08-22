@@ -1,10 +1,29 @@
 package com.app.library.repository;
 
 import com.app.library.model.BorrowingRecord;
+import com.app.library.model.Book;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface BorrowingRecordRepository extends JpaRepository<BorrowingRecord, Long> {
-    // Custom queries if needed
+    // Top N most borrowed books (by book id)
+    @Query("SELECT br.book.id FROM BorrowingRecord br GROUP BY br.book.id ORDER BY COUNT(br.book.id) DESC")
+    List<Long> findMostBorrowedBookIds();
+
+    // Find genres of books borrowed by a member
+    @Query("SELECT DISTINCT br.book.genre FROM BorrowingRecord br WHERE br.member.id = :memberId")
+    List<String> findBorrowedGenresByMember(@Param("memberId") Long memberId);
+
+    // Find book ids by genre
+    @Query("SELECT DISTINCT br.book.id FROM BorrowingRecord br WHERE br.book.genre = :genre")
+    List<Long> findBookIdsByGenre(@Param("genre") String genre);
+    
+        // Find overdue borrowings for a member
+        @Query("SELECT br FROM BorrowingRecord br WHERE br.member.id = :memberId AND br.returnDate IS NULL AND br.dueDate < CURRENT_DATE")
+        List<BorrowingRecord> findOverdueByMember(@Param("memberId") Long memberId);
 }

@@ -1,11 +1,13 @@
-package com.app.library.config;
 
-import com.app.library.filter.JwtAuthenticationFilter;
+package com.app.library.config;
+import org.springframework.http.HttpMethod;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -14,7 +16,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.config.Customizer;
+
+import com.app.library.filter.JwtAuthenticationFilter;
+
 import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
@@ -41,6 +45,16 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**", "/api/auth/**", "/actuator/health", "/health").permitAll()
+                // Allow GET for books to both USER and LIBRARIAN
+                .requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**").hasAnyRole("USER", "LIBRARIAN")
+                // Only LIBRARIAN can add, update, or delete books
+                .requestMatchers(HttpMethod.POST, "/api/books").hasRole("LIBRARIAN")
+                .requestMatchers(HttpMethod.PUT, "/api/books/**").hasRole("LIBRARIAN")
+                .requestMatchers(HttpMethod.DELETE, "/api/books/**").hasRole("LIBRARIAN")
+                // Only users can request a book
+                .requestMatchers("/api/request-book").hasRole("USER")
+                // Only librarians can manage members, borrow, return
+                .requestMatchers("/api/borrow", "/api/return/**", "/api/members/**").hasRole("LIBRARIAN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
