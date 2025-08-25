@@ -398,6 +398,10 @@ export default function App() {
     // Pagination state for borrowings
     const [borrowingsCurrentPage, setBorrowingsCurrentPage] = useState(1);
     const borrowingsPerPage = 10;
+    
+    // Pagination state for requests
+    const [requestsCurrentPage, setRequestsCurrentPage] = useState(1);
+    const requestsPerPage = 10;
     const [bookForm, setBookForm] = useState({ title: '', author: '', publicationYear: '', genre: '', isbn: '', availableCopies: 1 });
     const [borrowings, setBorrowings] = useState([]);
     const [overdues, setOverdues] = useState([]);
@@ -1299,14 +1303,37 @@ export default function App() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {requests.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={5} style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
-                                                        📝 No pending requests
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                requests.map(r => (
+                                            {(() => {
+                                                // Sort requests by ID descending (most recent first) and deduplicate
+                                                const sorted = [...requests].sort((a, b) => (b.id || 0) - (a.id || 0));
+                                                
+                                                // Deduplicate: keep only the most recent request per user-book combination
+                                                const deduplicatedRequests = [];
+                                                const seen = new Set();
+                                                
+                                                for (const request of sorted) {
+                                                    const key = `${request.username}-${request.bookId}-${request.status}`;
+                                                    if (!seen.has(key)) {
+                                                        seen.add(key);
+                                                        deduplicatedRequests.push(request);
+                                                    }
+                                                }
+                                                
+                                                const start = (requestsCurrentPage - 1) * requestsPerPage;
+                                                const end = start + requestsPerPage;
+                                                const paginatedRequests = deduplicatedRequests.slice(start, end);
+                                                
+                                                if (paginatedRequests.length === 0) {
+                                                    return (
+                                                        <tr>
+                                                            <td colSpan={5} style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
+                                                                📝 No pending requests
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+                                                
+                                                return paginatedRequests.map(r => (
                                                     <tr key={r.id}>
                                                         <td style={styles.td}>{r.id}</td>
                                                         <td style={styles.td}>#{r.bookId}</td>
@@ -1364,10 +1391,57 @@ export default function App() {
                                                             )}
                                                         </td>
                                                     </tr>
-                                                ))
-                                            )}
+                                                ));
+                                            })()}
                                         </tbody>
                                     </table>
+                                </div>
+
+                                {/* Pagination for Requests */}
+                                <div style={styles.pagination}>
+                                    {(() => {
+                                        // Calculate deduplicated count for pagination
+                                        const sorted = [...requests].sort((a, b) => (b.id || 0) - (a.id || 0));
+                                        const deduplicatedRequests = [];
+                                        const seen = new Set();
+                                        
+                                        for (const request of sorted) {
+                                            const key = `${request.username}-${request.bookId}-${request.status}`;
+                                            if (!seen.has(key)) {
+                                                seen.add(key);
+                                                deduplicatedRequests.push(request);
+                                            }
+                                        }
+                                        
+                                        const totalPages = Math.ceil(deduplicatedRequests.length / requestsPerPage);
+                                        if (totalPages <= 1) return null;
+                                        
+                                        const maxButtons = 10;
+                                        let startPage = Math.max(1, requestsCurrentPage - Math.floor(maxButtons / 2));
+                                        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                                        if (endPage - startPage < maxButtons - 1) {
+                                            startPage = Math.max(1, endPage - maxButtons + 1);
+                                        }
+                                        const buttons = [];
+                                        if (startPage > 1) {
+                                            buttons.push(<span key="start-ellipsis" style={{ color: '#64748b' }}>...</span>);
+                                        }
+                                        for (let i = startPage; i <= endPage; i++) {
+                                            buttons.push(
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setRequestsCurrentPage(i)}
+                                                    style={requestsCurrentPage === i ? styles.activePageButton : styles.pageButton}
+                                                >
+                                                    {i}
+                                                </button>
+                                            );
+                                        }
+                                        if (endPage < totalPages) {
+                                            buttons.push(<span key="end-ellipsis" style={{ color: '#64748b' }}>...</span>);
+                                        }
+                                        return buttons;
+                                    })()}
                                 </div>
                             </div>
 
