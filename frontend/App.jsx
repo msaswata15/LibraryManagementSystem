@@ -402,6 +402,14 @@ export default function App() {
     // Pagination state for requests
     const [requestsCurrentPage, setRequestsCurrentPage] = useState(1);
     const requestsPerPage = 10;
+    
+    // Pagination state for users
+    const [usersCurrentPage, setUsersCurrentPage] = useState(1);
+    const usersPerPage = 10;
+    
+    // Pagination state for user borrowings
+    const [userBorrowingsCurrentPage, setUserBorrowingsCurrentPage] = useState(1);
+    const userBorrowingsPerPage = 10;
     const [bookForm, setBookForm] = useState({ title: '', author: '', publicationYear: '', genre: '', isbn: '', availableCopies: 1 });
     const [borrowings, setBorrowings] = useState([]);
     const [overdues, setOverdues] = useState([]);
@@ -1113,61 +1121,112 @@ export default function App() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {borrowings.filter(b => (b.userId === user.id || b.memberId === user.id || (b.member && b.member.id === user.id))).map(b => {
-                                                let fine = fines[b.id];
-                                                let daysOverdue = 0;
-                                                if (b.dueDate && !b.returnDate && new Date(b.dueDate) < new Date()) {
-                                                    daysOverdue = Math.max(0, Math.floor((new Date() - new Date(b.dueDate)) / (1000 * 60 * 60 * 24)));
-                                                    fine = daysOverdue > 0 ? daysOverdue * 5 : 0;
+                                            {(() => {
+                                                // Filter and sort user's borrowings, most recent first
+                                                const userBorrowings = borrowings.filter(b => 
+                                                    (b.userId === user.id || b.memberId === user.id || (b.member && b.member.id === user.id))
+                                                ).sort((a, b) => (b.id || 0) - (a.id || 0));
+                                                
+                                                const start = (userBorrowingsCurrentPage - 1) * userBorrowingsPerPage;
+                                                const end = start + userBorrowingsPerPage;
+                                                const paginatedBorrowings = userBorrowings.slice(start, end);
+                                                
+                                                if (paginatedBorrowings.length === 0) {
+                                                    return (
+                                                        <tr>
+                                                            <td colSpan={6} style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
+                                                                No borrowings found
+                                                            </td>
+                                                        </tr>
+                                                    );
                                                 }
-                                                return (
-                                                    <tr key={b.id} style={{
-                                                        backgroundColor: b.returnDate ? '#f8fafc' : (daysOverdue > 0 ? '#fef2f2' : 'white')
-                                                    }}>
-                                                        <td style={{ ...styles.td, fontWeight: '500' }}>
-                                                            {books.find(book => book.id === b.bookId)?.title || `Book #${b.bookId}`}
-                                                        </td>
-                                                        <td style={styles.td}>{b.borrowDate}</td>
-                                                        <td style={styles.td}>{b.dueDate}</td>
-                                                        <td style={styles.td}>
-                                                            {b.returnDate ? (
-                                                                <span style={{ ...styles.badge, ...styles.badgeSuccess }}>
-                                                                    ✅ {b.returnDate}
-                                                                </span>
-                                                            ) : (
-                                                                <span style={{ color: '#dc2626', fontWeight: '500' }}>Not returned</span>
-                                                            )}
-                                                        </td>
-                                                        <td style={styles.td}>
-                                                            {fine && fine > 0 ? (
-                                                                <span style={{ color: '#dc2626', fontWeight: '600' }}>₹{fine}</span>
-                                                            ) : '-'}
-                                                        </td>
-                                                        <td style={styles.td}>
-                                                            {!b.returnDate && (
-                                                                <button
-                                                                    onClick={() => returnBook(b.id)}
-                                                                    disabled={loading}
-                                                                    style={{ ...styles.button, backgroundColor: '#059669' }}
-                                                                    onMouseEnter={e => !loading && (e.target.style.backgroundColor = '#047857')}
-                                                                    onMouseLeave={e => !loading && (e.target.style.backgroundColor = '#059669')}
-                                                                >
-                                                                    📤 Return
-                                                                </button>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                            {borrowings.filter(b => (b.userId === user.id || b.memberId === user.id || (b.member && b.member.id === user.id))).length === 0 && (
-                                                <tr>
-                                                    <td colSpan={6} style={{ ...styles.td, textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
-                                                        No borrowings found
-                                                    </td>
-                                                </tr>
-                                            )}
+                                                
+                                                return paginatedBorrowings.map(b => {
+                                                    let fine = fines[b.id];
+                                                    let daysOverdue = 0;
+                                                    if (b.dueDate && !b.returnDate && new Date(b.dueDate) < new Date()) {
+                                                        daysOverdue = Math.max(0, Math.floor((new Date() - new Date(b.dueDate)) / (1000 * 60 * 60 * 24)));
+                                                        fine = daysOverdue > 0 ? daysOverdue * 5 : 0;
+                                                    }
+                                                    return (
+                                                        <tr key={b.id} style={{
+                                                            backgroundColor: b.returnDate ? '#f8fafc' : (daysOverdue > 0 ? '#fef2f2' : 'white')
+                                                        }}>
+                                                            <td style={{ ...styles.td, fontWeight: '500' }}>
+                                                                {books.find(book => book.id === b.bookId)?.title || `Book #${b.bookId}`}
+                                                            </td>
+                                                            <td style={styles.td}>{b.borrowDate}</td>
+                                                            <td style={styles.td}>{b.dueDate}</td>
+                                                            <td style={styles.td}>
+                                                                {b.returnDate ? (
+                                                                    <span style={{ ...styles.badge, ...styles.badgeSuccess }}>
+                                                                        ✅ {b.returnDate}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span style={{ color: '#dc2626', fontWeight: '500' }}>Not returned</span>
+                                                                )}
+                                                            </td>
+                                                            <td style={styles.td}>
+                                                                {fine && fine > 0 ? (
+                                                                    <span style={{ color: '#dc2626', fontWeight: '600' }}>₹{fine}</span>
+                                                                ) : '-'}
+                                                            </td>
+                                                            <td style={styles.td}>
+                                                                {!b.returnDate && (
+                                                                    <button
+                                                                        onClick={() => returnBook(b.id)}
+                                                                        disabled={loading}
+                                                                        style={{ ...styles.button, backgroundColor: '#059669' }}
+                                                                        onMouseEnter={e => !loading && (e.target.style.backgroundColor = '#047857')}
+                                                                        onMouseLeave={e => !loading && (e.target.style.backgroundColor = '#059669')}
+                                                                    >
+                                                                        📤 Return
+                                                                    </button>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                });
+                                            })()}
                                         </tbody>
                                     </table>
+                                </div>
+
+                                {/* Pagination for User Borrowings */}
+                                <div style={styles.pagination}>
+                                    {(() => {
+                                        const userBorrowings = borrowings.filter(b => 
+                                            (b.userId === user.id || b.memberId === user.id || (b.member && b.member.id === user.id))
+                                        );
+                                        const totalPages = Math.ceil(userBorrowings.length / userBorrowingsPerPage);
+                                        if (totalPages <= 1) return null;
+                                        
+                                        const maxButtons = 10;
+                                        let startPage = Math.max(1, userBorrowingsCurrentPage - Math.floor(maxButtons / 2));
+                                        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                                        if (endPage - startPage < maxButtons - 1) {
+                                            startPage = Math.max(1, endPage - maxButtons + 1);
+                                        }
+                                        const buttons = [];
+                                        if (startPage > 1) {
+                                            buttons.push(<span key="start-ellipsis" style={{ color: '#64748b' }}>...</span>);
+                                        }
+                                        for (let i = startPage; i <= endPage; i++) {
+                                            buttons.push(
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setUserBorrowingsCurrentPage(i)}
+                                                    style={userBorrowingsCurrentPage === i ? styles.activePageButton : styles.pageButton}
+                                                >
+                                                    {i}
+                                                </button>
+                                            );
+                                        }
+                                        if (endPage < totalPages) {
+                                            buttons.push(<span key="end-ellipsis" style={{ color: '#64748b' }}>...</span>);
+                                        }
+                                        return buttons;
+                                    })()}
                                 </div>
                             </div>
 
@@ -1712,7 +1771,14 @@ export default function App() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {users.map(u => (
+                                            {(() => {
+                                                // Sort users by ID descending and paginate
+                                                const sorted = [...users].sort((a, b) => (b.id || 0) - (a.id || 0));
+                                                const start = (usersCurrentPage - 1) * usersPerPage;
+                                                const end = start + usersPerPage;
+                                                const paginatedUsers = sorted.slice(start, end);
+                                                
+                                                return paginatedUsers.map(u => (
                                                 <tr key={u.id}>
                                                     <td style={styles.td}>{u.id}</td>
                                                     <td style={{ ...styles.td, fontWeight: '500' }}>{u.name}</td>
@@ -1729,9 +1795,44 @@ export default function App() {
                                                         </span>
                                                     </td>
                                                 </tr>
-                                            ))}
+                                            ));
+                                            })()}
                                         </tbody>
                                     </table>
+                                </div>
+
+                                {/* Pagination for Users */}
+                                <div style={styles.pagination}>
+                                    {(() => {
+                                        const totalPages = Math.ceil(users.length / usersPerPage);
+                                        if (totalPages <= 1) return null;
+                                        
+                                        const maxButtons = 10;
+                                        let startPage = Math.max(1, usersCurrentPage - Math.floor(maxButtons / 2));
+                                        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                                        if (endPage - startPage < maxButtons - 1) {
+                                            startPage = Math.max(1, endPage - maxButtons + 1);
+                                        }
+                                        const buttons = [];
+                                        if (startPage > 1) {
+                                            buttons.push(<span key="start-ellipsis" style={{ color: '#64748b' }}>...</span>);
+                                        }
+                                        for (let i = startPage; i <= endPage; i++) {
+                                            buttons.push(
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setUsersCurrentPage(i)}
+                                                    style={usersCurrentPage === i ? styles.activePageButton : styles.pageButton}
+                                                >
+                                                    {i}
+                                                </button>
+                                            );
+                                        }
+                                        if (endPage < totalPages) {
+                                            buttons.push(<span key="end-ellipsis" style={{ color: '#64748b' }}>...</span>);
+                                        }
+                                        return buttons;
+                                    })()}
                                 </div>
                             </div>
 
