@@ -394,6 +394,10 @@ export default function App() {
     // Pagination state for books
     const [currentPage, setCurrentPage] = useState(1);
     const booksPerPage = 8;
+    
+    // Pagination state for borrowings
+    const [borrowingsCurrentPage, setBorrowingsCurrentPage] = useState(1);
+    const borrowingsPerPage = 10;
     const [bookForm, setBookForm] = useState({ title: '', author: '', publicationYear: '', genre: '', isbn: '', availableCopies: 1 });
     const [borrowings, setBorrowings] = useState([]);
     const [overdues, setOverdues] = useState([]);
@@ -1675,48 +1679,89 @@ export default function App() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {borrowings.map(b => {
-                                                // Prefer b.member if present, else fallback to userId
-                                                const memberObj = b.member || users.find(u => u.id === b.userId);
-                                                const memberName = memberObj ? (memberObj.username || memberObj.name || memberObj.email || memberObj.id) : (b.userId || b.memberId || '-');
-                                                const memberId = memberObj ? memberObj.id : (b.userId || b.memberId || '-');
-                                                let fine = fines[b.id];
-                                                let daysOverdue = 0;
-                                                if (b.dueDate && !b.returnDate && new Date(b.dueDate) < new Date()) {
-                                                    daysOverdue = Math.max(0, Math.floor((new Date() - new Date(b.dueDate)) / (1000 * 60 * 60 * 24)));
-                                                    fine = daysOverdue > 0 ? daysOverdue * 5 : 0;
-                                                }
-                                                return (
-                                                    <tr key={b.id} style={{
-                                                        backgroundColor: b.returnDate ? '#f8fafc' : (daysOverdue > 0 ? '#fef2f2' : 'white')
-                                                    }}>
-                                                        <td style={styles.td}>{b.id}</td>
-                                                        <td style={{ ...styles.td, fontWeight: '500' }}>{memberName}</td>
-                                                        <td style={styles.td}>#{memberId}</td>
-                                                        <td style={styles.td}>{books.find(book => book.id === b.bookId)?.title || `Book #${b.bookId}`}</td>
-                                                        <td style={styles.td}>{b.borrowDate}</td>
-                                                        <td style={styles.td}>{b.dueDate}</td>
-                                                        <td style={styles.td}>
-                                                            {b.returnDate ? (
-                                                                <span style={{ ...styles.badge, ...styles.badgeSuccess }}>
-                                                                    ✅ {b.returnDate}
-                                                                </span>
-                                                            ) : (
-                                                                <span style={{ ...styles.badge, ...styles.badgeOverdue }}>
-                                                                    ⏳ Not returned
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td style={styles.td}>
-                                                            {fine && fine > 0 ? (
-                                                                <span style={{ color: '#dc2626', fontWeight: '600' }}>₹{fine}</span>
-                                                            ) : '-'}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
+                                            {/* Show paginated borrowings, sorted by ID descending */}
+                                            {(() => {
+                                                const sorted = [...borrowings].sort((a, b) => {
+                                                    // Sort by ID descending to get the latest borrowings first
+                                                    return (b.id || 0) - (a.id || 0);
+                                                });
+                                                const start = (borrowingsCurrentPage - 1) * borrowingsPerPage;
+                                                const end = start + borrowingsPerPage;
+                                                return sorted.slice(start, end).map(b => {
+                                                    // Prefer b.member if present, else fallback to userId
+                                                    const memberObj = b.member || users.find(u => u.id === b.userId);
+                                                    const memberName = memberObj ? (memberObj.username || memberObj.name || memberObj.email || memberObj.id) : (b.userId || b.memberId || '-');
+                                                    const memberId = memberObj ? memberObj.id : (b.userId || b.memberId || '-');
+                                                    let fine = fines[b.id];
+                                                    let daysOverdue = 0;
+                                                    if (b.dueDate && !b.returnDate && new Date(b.dueDate) < new Date()) {
+                                                        daysOverdue = Math.max(0, Math.floor((new Date() - new Date(b.dueDate)) / (1000 * 60 * 60 * 24)));
+                                                        fine = daysOverdue > 0 ? daysOverdue * 5 : 0;
+                                                    }
+                                                    return (
+                                                        <tr key={b.id} style={{
+                                                            backgroundColor: b.returnDate ? '#f8fafc' : (daysOverdue > 0 ? '#fef2f2' : 'white')
+                                                        }}>
+                                                            <td style={styles.td}>{b.id}</td>
+                                                            <td style={{ ...styles.td, fontWeight: '500' }}>{memberName}</td>
+                                                            <td style={styles.td}>#{memberId}</td>
+                                                            <td style={styles.td}>{books.find(book => book.id === b.bookId)?.title || `Book #${b.bookId}`}</td>
+                                                            <td style={styles.td}>{b.borrowDate}</td>
+                                                            <td style={styles.td}>{b.dueDate}</td>
+                                                            <td style={styles.td}>
+                                                                {b.returnDate ? (
+                                                                    <span style={{ ...styles.badge, ...styles.badgeSuccess }}>
+                                                                        ✅ {b.returnDate}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span style={{ ...styles.badge, ...styles.badgeOverdue }}>
+                                                                        ⏳ Not returned
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td style={styles.td}>
+                                                                {fine && fine > 0 ? (
+                                                                    <span style={{ color: '#dc2626', fontWeight: '600' }}>₹{fine}</span>
+                                                                ) : '-'}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                });
+                                            })()}
                                         </tbody>
                                     </table>
+                                </div>
+
+                                {/* Pagination for Borrowings */}
+                                <div style={styles.pagination}>
+                                    {(() => {
+                                        const totalPages = Math.ceil(borrowings.length / borrowingsPerPage);
+                                        const maxButtons = 10;
+                                        let startPage = Math.max(1, borrowingsCurrentPage - Math.floor(maxButtons / 2));
+                                        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                                        if (endPage - startPage < maxButtons - 1) {
+                                            startPage = Math.max(1, endPage - maxButtons + 1);
+                                        }
+                                        const buttons = [];
+                                        if (startPage > 1) {
+                                            buttons.push(<span key="start-ellipsis" style={{ color: '#64748b' }}>...</span>);
+                                        }
+                                        for (let i = startPage; i <= endPage; i++) {
+                                            buttons.push(
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setBorrowingsCurrentPage(i)}
+                                                    style={borrowingsCurrentPage === i ? styles.activePageButton : styles.pageButton}
+                                                >
+                                                    {i}
+                                                </button>
+                                            );
+                                        }
+                                        if (endPage < totalPages) {
+                                            buttons.push(<span key="end-ellipsis" style={{ color: '#64748b' }}>...</span>);
+                                        }
+                                        return buttons;
+                                    })()}
                                 </div>
                             </div>
 
