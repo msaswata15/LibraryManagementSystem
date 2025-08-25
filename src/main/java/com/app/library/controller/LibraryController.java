@@ -27,55 +27,7 @@ public class LibraryController {
     @Autowired
     private LibraryService libraryService;
 
-    // ==================== Book Endpoints ====================
 
-    // Get all books
-    @GetMapping("/books")
-    public ResponseEntity<List<Book>> getAllBooks() {
-        List<Book> books = libraryService.getAllBooks();
-        logger.info("The list of books returned"+books);
-        return new ResponseEntity<>(books, HttpStatus.OK);
-    }
-
-    // Get a book by ID
-    @GetMapping("/books/{id}")
-    public ResponseEntity<Book> getBookById(@PathVariable Long id) {
-        Optional<Book> book = libraryService.getBookById(id);
-        logger.info("The book returned"+book);
-        return book.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
-
-    // Add a new book
-    @PostMapping("/books")
-    public ResponseEntity<Book> addBook(@RequestBody Book book) {
-        libraryService.addBook(book);
-        logger.info("The book was added");
-        return new ResponseEntity<>(book, HttpStatus.CREATED);
-    }
-
-    // Update a book
-    @PutMapping("/books/{id}")
-    public ResponseEntity<Book> updateBook(@PathVariable Long id, @RequestBody Book updatedBook) {
-        if (!libraryService.getBookById(id).isPresent()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        updatedBook.setId(id);
-        libraryService.updateBook(updatedBook);
-        logger.info("The book has been updated "+updatedBook);
-        return new ResponseEntity<>(updatedBook, HttpStatus.OK);
-    }
-
-    // Delete a book
-    @DeleteMapping("/books/{id}")
-    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
-        if (!libraryService.getBookById(id).isPresent()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        libraryService.deleteBook(id);
-        logger.info("The book has been deleted ");
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-    }
 
     // ==================== Member Endpoints ====================
 
@@ -137,30 +89,41 @@ public class LibraryController {
         return new ResponseEntity<>(records, HttpStatus.OK);
     }
 
-    // Borrow a book
+
+    // Borrow a book (database-backed)
     @PostMapping("/borrow")
     public ResponseEntity<BorrowingRecord> borrowBook(@RequestBody BorrowingRecord record) {
         try {
             // Set borrow date and due date (e.g., due date = borrow date + 14 days)
             record.setBorrowDate(LocalDate.now());
             record.setDueDate(LocalDate.now().plusDays(14));
-            libraryService.borrowBook(record);
-            logger.info("The book has been borrowed " + record);
-            return new ResponseEntity<>(record, HttpStatus.CREATED);
-        } catch (IllegalArgumentException | IllegalStateException e) {
+            BorrowingRecord saved = libraryService.addBorrowingRecord(record);
+            logger.info("The book has been borrowed " + saved);
+            return new ResponseEntity<>(saved, HttpStatus.CREATED);
+        } catch (Exception e) {
             logger.error("Error borrowing book: " + e.getMessage());
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
 
-    // Return a book
+
+    // Return a book (database-backed)
     @PutMapping("/return/{recordId}")
-    public ResponseEntity<Void> returnBook(@PathVariable Long recordId) {
+    public ResponseEntity<BorrowingRecord> returnBook(@PathVariable Long recordId) {
         try {
-            libraryService.returnBook(recordId, LocalDate.now());
+            var recordOpt = libraryService.getBorrowingRecordById(recordId);
+            if (recordOpt.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+            BorrowingRecord record = recordOpt.get();
+            if (record.getReturnDate() != null) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+            record.setReturnDate(LocalDate.now());
+            BorrowingRecord updated = libraryService.updateBorrowingRecord(record);
             logger.info("The book has been returned " + recordId);
-            return new ResponseEntity<>(HttpStatus.OK);
-        } catch (IllegalArgumentException | IllegalStateException e) {
+            return new ResponseEntity<>(updated, HttpStatus.OK);
+        } catch (Exception e) {
             logger.error("Error returning book: " + e.getMessage());
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
