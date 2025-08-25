@@ -62,6 +62,9 @@ public class BookRequestController {
     @PutMapping("/{id}/approve")
     public ResponseEntity<?> approveRequest(@PathVariable Long id) {
         var updated = bookRequestService.approveRequest(id);
+        if (updated.getStatus() == BookRequest.Status.REJECTED) {
+            return ResponseEntity.badRequest().body("Request rejected: No available copies");
+        }
         return ResponseEntity.ok(updated);
     }
 

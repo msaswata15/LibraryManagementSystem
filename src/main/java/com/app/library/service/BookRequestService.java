@@ -55,14 +55,12 @@ public class BookRequestService {
 
     public BookRequest approveRequest(Long id) {
         BookRequest req = bookRequestRepository.findById(id).orElseThrow();
-        req.setStatus(BookRequest.Status.APPROVED);
-        BookRequest savedReq = bookRequestRepository.save(req);
-
-        // When approved, create a BorrowingRecord for the user
         if (req.getBookId() != null && req.getUsername() != null) {
             Book book = bookRepository.findById(req.getBookId()).orElse(null);
             User user = userRepository.findByUsername(req.getUsername()).orElse(null);
             if (book != null && user != null && book.getAvailableCopies() > 0) {
+                req.setStatus(BookRequest.Status.APPROVED);
+                BookRequest savedReq = bookRequestRepository.save(req);
                 // Decrement available copies
                 book.setAvailableCopies(book.getAvailableCopies() - 1);
                 bookRepository.save(book);
@@ -74,9 +72,16 @@ public class BookRequestService {
                 record.setBorrowDate(now);
                 record.setDueDate(now.plusYears(1));
                 borrowingRecordRepository.save(record);
+                return savedReq;
+            } else {
+                // Not enough copies, reject the request
+                req.setStatus(BookRequest.Status.REJECTED);
+                return bookRequestRepository.save(req);
             }
         }
-        return savedReq;
+        // If book or user not found, reject
+        req.setStatus(BookRequest.Status.REJECTED);
+        return bookRequestRepository.save(req);
     }
 
     public BookRequest rejectRequest(Long id) {
