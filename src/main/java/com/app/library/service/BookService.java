@@ -1,3 +1,4 @@
+
 package com.app.library.service;
 
 import com.app.library.model.Book;
@@ -10,6 +11,14 @@ import java.util.*;
 
 @Service
 public class BookService {
+
+    /**
+     * Returns true if the book is referenced by any borrowing records.
+     */
+    public boolean hasBorrowings(Long bookId) {
+        // Use count query for efficiency
+    return borrowingRecordRepository.existsByBook_Id(bookId);
+    }
     @Autowired
     private BookRepository bookRepository;
 
@@ -29,7 +38,7 @@ public class BookService {
     }
 
     public void deleteBook(Long id) {
-        bookRepository.deleteById(id);
+    bookRepository.deleteById(id);
     }
 
     // --- Recommendation Logic ---

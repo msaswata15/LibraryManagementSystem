@@ -11,6 +11,10 @@ import com.app.library.model.BorrowingRecord;
 
 @Repository
 public interface BorrowingRecordRepository extends JpaRepository<BorrowingRecord, Long> {
+    // Check if a user has an active borrowing for a book
+    boolean existsByBook_IdAndMember_IdAndReturnDateIsNull(Long bookId, Long memberId);
+    // Check if any borrowing records exist for a book
+    boolean existsByBook_Id(Long bookId);
     // Top N most borrowed books (by book id)
     @Query("SELECT br.book.id FROM BorrowingRecord br WHERE br.book IS NOT NULL GROUP BY br.book.id ORDER BY COUNT(br.book.id) DESC")
     List<Long> findMostBorrowedBookIds();

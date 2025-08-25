@@ -207,6 +207,18 @@ const styles = {
 
 // --- OfflineIssueForm component ---
 function OfflineIssueForm({ users, books, onIssue }) {
+    // Helper to check if user already has an active borrowing for the selected book
+    const [activeBorrowings, setActiveBorrowings] = React.useState([]);
+    React.useEffect(() => {
+        // Fetch all borrowings and filter for active ones
+        axiosAuth.get(`${API}/borrowings`).then(r => {
+            setActiveBorrowings(r.data.filter(b => !b.returnDate));
+        }).catch(() => setActiveBorrowings([]));
+    }, []);
+
+    const userHasActiveBorrowing = (userId, bookId) => {
+        return activeBorrowings.some(b => String(b.memberId) === String(userId) && String(b.bookId) === String(bookId));
+    };
     const [userQuery, setUserQuery] = React.useState('');
     const [bookQuery, setBookQuery] = React.useState('');
     const [userId, setUserId] = React.useState('');
@@ -244,23 +256,23 @@ function OfflineIssueForm({ users, books, onIssue }) {
                     style={styles.input}
                 />
                 {showUserSuggestions && userQuery && (
-                    <ul style={{ 
-                        position: 'absolute', 
-                        zIndex: 10, 
-                        background: 'white', 
-                        border: '1px solid #d1d5db', 
+                    <ul style={{
+                        position: 'absolute',
+                        zIndex: 10,
+                        background: 'white',
+                        border: '1px solid #d1d5db',
                         borderRadius: '8px',
-                        width: '100%', 
-                        maxHeight: '200px', 
-                        overflowY: 'auto', 
-                        listStyle: 'none', 
-                        margin: '4px 0 0 0', 
+                        width: '100%',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        listStyle: 'none',
+                        margin: '4px 0 0 0',
                         padding: 0,
                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                     }}>
                         {filteredUsers.map(u => (
-                            <li key={u.id} style={{ 
-                                padding: '12px 16px', 
+                            <li key={u.id} style={{
+                                padding: '12px 16px',
                                 cursor: 'pointer',
                                 borderBottom: '1px solid #f1f5f9',
                                 transition: 'background-color 0.2s ease'
@@ -300,23 +312,23 @@ function OfflineIssueForm({ users, books, onIssue }) {
                     style={styles.input}
                 />
                 {showBookSuggestions && bookQuery && (
-                    <ul style={{ 
-                        position: 'absolute', 
-                        zIndex: 10, 
-                        background: 'white', 
-                        border: '1px solid #d1d5db', 
+                    <ul style={{
+                        position: 'absolute',
+                        zIndex: 10,
+                        background: 'white',
+                        border: '1px solid #d1d5db',
                         borderRadius: '8px',
-                        width: '100%', 
-                        maxHeight: '200px', 
-                        overflowY: 'auto', 
-                        listStyle: 'none', 
-                        margin: '4px 0 0 0', 
+                        width: '100%',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        listStyle: 'none',
+                        margin: '4px 0 0 0',
                         padding: 0,
                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                     }}>
                         {filteredBooks.map(b => (
-                            <li key={b.id} style={{ 
-                                padding: '12px 16px', 
+                            <li key={b.id} style={{
+                                padding: '12px 16px',
                                 cursor: 'pointer',
                                 borderBottom: '1px solid #f1f5f9',
                                 transition: 'background-color 0.2s ease'
@@ -340,18 +352,18 @@ function OfflineIssueForm({ users, books, onIssue }) {
                     </ul>
                 )}
             </div>
-            <button 
-                type="submit" 
-                disabled={!userId || !bookId}
+            <button
+                type="submit"
+                disabled={!userId || !bookId || userHasActiveBorrowing(userId, bookId)}
                 style={{
                     ...styles.button,
-                    opacity: (!userId || !bookId) ? 0.5 : 1,
-                    cursor: (!userId || !bookId) ? 'not-allowed' : 'pointer'
+                    opacity: (!userId || !bookId || userHasActiveBorrowing(userId, bookId)) ? 0.5 : 1,
+                    cursor: (!userId || !bookId || userHasActiveBorrowing(userId, bookId)) ? 'not-allowed' : 'pointer'
                 }}
                 onMouseEnter={e => !e.target.disabled && (e.target.style.backgroundColor = '#2563eb')}
                 onMouseLeave={e => !e.target.disabled && (e.target.style.backgroundColor = '#3b82f6')}
             >
-                📚 Issue Book
+                {userHasActiveBorrowing(userId, bookId) ? 'Already Issued' : '📚 Issue Book'}
             </button>
         </form>
     );
@@ -372,14 +384,14 @@ export default function App() {
     // Project summary for display
     const projectSummary = `Advanced Library Management System with role-based access control, 
     borrowing/return processes, overdue tracking, fine calculation, book recommendations, and comprehensive audit trails.`;
-    
+
     const [users, setUsers] = useState([]);
     const [books, setBooks] = useState([]);
     const [requests, setRequests] = useState([]);
     const [search, setSearch] = useState('');
     const [editBook, setEditBook] = useState(null);
     const [loading, setLoading] = useState(false);
-    
+
     // Pagination state for books
     const [currentPage, setCurrentPage] = useState(1);
     const booksPerPage = 8;
@@ -581,7 +593,13 @@ export default function App() {
             const r = await axiosAuth.get(`${API}/borrowings`);
             setBorrowings(r.data);
         } catch (err) {
-            setMessage('❌ Borrowing failed');
+            if (err?.response?.status === 409 && err?.response?.data?.message?.includes('already borrowed')) {
+                setMessage('❌ You have already borrowed this book. Please return it before borrowing again.');
+            } else if (err?.response?.data?.message) {
+                setMessage('❌ ' + err.response.data.message);
+            } else {
+                setMessage('❌ Borrowing failed');
+            }
         } finally {
             setLoading(false);
         }
@@ -597,7 +615,7 @@ export default function App() {
                 <h1 style={styles.title}>📚 Library Management System</h1>
                 <p style={styles.subtitle}>{projectSummary}</p>
             </div>
-            
+
             {message && (
                 <div style={{
                     ...styles.alert,
@@ -606,7 +624,7 @@ export default function App() {
                     {message}
                 </div>
             )}
-            
+
             {loading && (
                 <div style={{
                     ...styles.alert,
@@ -617,7 +635,7 @@ export default function App() {
                     ⏳ Loading...
                 </div>
             )}
-            
+
             {!user ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
                     {/* Registration Card */}
@@ -627,60 +645,60 @@ export default function App() {
                             <div style={styles.form}>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Full Name</label>
-                                    <input 
-                                        required 
-                                        placeholder="Enter your full name" 
-                                        value={form.name} 
+                                    <input
+                                        required
+                                        placeholder="Enter your full name"
+                                        value={form.name}
                                         onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                                         style={styles.input}
                                     />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Username</label>
-                                    <input 
-                                        required 
-                                        placeholder="Choose a username" 
-                                        value={form.username} 
+                                    <input
+                                        required
+                                        placeholder="Choose a username"
+                                        value={form.username}
                                         onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
                                         style={styles.input}
                                     />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Password</label>
-                                    <input 
-                                        required 
-                                        placeholder="Create a password" 
-                                        type="password" 
-                                        value={form.password} 
+                                    <input
+                                        required
+                                        placeholder="Create a password"
+                                        type="password"
+                                        value={form.password}
                                         onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                                         style={styles.input}
                                     />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Email</label>
-                                    <input 
-                                        required 
-                                        placeholder="Enter your email" 
+                                    <input
+                                        required
+                                        placeholder="Enter your email"
                                         type="email"
-                                        value={form.email} 
+                                        value={form.email}
                                         onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                                         style={styles.input}
                                     />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Phone Number</label>
-                                    <input 
-                                        required 
-                                        placeholder="Enter your phone number" 
-                                        value={form.phoneNumber} 
+                                    <input
+                                        required
+                                        placeholder="Enter your phone number"
+                                        value={form.phoneNumber}
                                         onChange={e => setForm(f => ({ ...f, phoneNumber: e.target.value }))}
                                         style={styles.input}
                                     />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Role</label>
-                                    <select 
-                                        value={form.role} 
+                                    <select
+                                        value={form.role}
                                         onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
                                         style={styles.select}
                                     >
@@ -689,8 +707,8 @@ export default function App() {
                                     </select>
                                 </div>
                             </div>
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 disabled={loading}
                                 style={{
                                     ...styles.button,
@@ -705,7 +723,7 @@ export default function App() {
                             </button>
                         </form>
                     </div>
-                    
+
                     {/* Login Card */}
                     <div style={styles.card}>
                         <h2 style={styles.sectionTitle}>🔐 Sign In</h2>
@@ -713,26 +731,26 @@ export default function App() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Username</label>
-                                    <input 
-                                        required 
-                                        placeholder="Enter your username" 
-                                        value={loginForm.username} 
+                                    <input
+                                        required
+                                        placeholder="Enter your username"
+                                        value={loginForm.username}
                                         onChange={e => setLoginForm(f => ({ ...f, username: e.target.value }))}
                                         style={styles.input}
                                     />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Password</label>
-                                    <input 
-                                        required 
-                                        placeholder="Enter your password" 
-                                        type="password" 
-                                        value={loginForm.password} 
+                                    <input
+                                        required
+                                        placeholder="Enter your password"
+                                        type="password"
+                                        value={loginForm.password}
                                         onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
                                         style={styles.input}
                                     />
                                 </div>
-                                <button 
+                                <button
                                     type="submit"
                                     disabled={loading}
                                     style={{
@@ -754,13 +772,13 @@ export default function App() {
                 <>
                     <div style={styles.userNav}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ 
-                                backgroundColor: user.role === 'LIBRARIAN' ? '#7c3aed' : '#059669', 
-                                color: 'white', 
-                                padding: '6px 12px', 
-                                borderRadius: '6px', 
-                                fontSize: '12px', 
-                                fontWeight: '600' 
+                            <div style={{
+                                backgroundColor: user.role === 'LIBRARIAN' ? '#7c3aed' : '#059669',
+                                color: 'white',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: '600'
                             }}>
                                 {user.role === 'LIBRARIAN' ? '👨‍💼 LIBRARIAN' : '📖 MEMBER'}
                             </div>
@@ -769,7 +787,7 @@ export default function App() {
                                 <div style={{ fontSize: '14px', color: '#64748b' }}>Manage your library activities</div>
                             </div>
                         </div>
-                        <button 
+                        <button
                             onClick={logout}
                             style={styles.buttonSecondary}
                             onMouseEnter={e => e.target.style.backgroundColor = '#475569'}
@@ -783,9 +801,9 @@ export default function App() {
                         <>
                             <div style={styles.card}>
                                 <h2 style={styles.sectionTitle}>📚 Available Books</h2>
-                                <input 
-                                    placeholder="🔍 Search books by title or author..." 
-                                    value={search} 
+                                <input
+                                    placeholder="🔍 Search books by title or author..."
+                                    value={search}
                                     onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                                     style={styles.searchInput}
                                 />
@@ -805,8 +823,8 @@ export default function App() {
                                         </thead>
                                         <tbody>
                                             {(() => {
-                                                const filtered = books.filter(b => 
-                                                    b.title.toLowerCase().includes(search.toLowerCase()) || 
+                                                const filtered = books.filter(b =>
+                                                    b.title.toLowerCase().includes(search.toLowerCase()) ||
                                                     b.author.toLowerCase().includes(search.toLowerCase())
                                                 );
                                                 const start = (currentPage - 1) * booksPerPage;
@@ -822,12 +840,12 @@ export default function App() {
                                                             <td style={styles.td}>{b.author}</td>
                                                             <td style={styles.td}>{b.publicationYear}</td>
                                                             <td style={styles.td}>
-                                                                <span style={{ 
-                                                                    backgroundColor: '#f0f9ff', 
-                                                                    color: '#0369a1', 
-                                                                    padding: '2px 8px', 
-                                                                    borderRadius: '12px', 
-                                                                    fontSize: '12px' 
+                                                                <span style={{
+                                                                    backgroundColor: '#f0f9ff',
+                                                                    color: '#0369a1',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '12px',
+                                                                    fontSize: '12px'
                                                                 }}>
                                                                     {b.genre}
                                                                 </span>
@@ -843,7 +861,7 @@ export default function App() {
                                                             </td>
                                                             <td style={styles.td}>
                                                                 {!userRequest && !approvedRequest && !alreadyBorrowed && (
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => handleRequestBook(b.id)}
                                                                         disabled={loading}
                                                                         style={styles.button}
@@ -859,7 +877,7 @@ export default function App() {
                                                                     </span>
                                                                 )}
                                                                 {approvedRequest && !alreadyBorrowed && (
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => borrowBook(b.id)}
                                                                         style={{ ...styles.button, backgroundColor: '#059669' }}
                                                                         onMouseEnter={e => e.target.style.backgroundColor = '#047857'}
@@ -881,12 +899,12 @@ export default function App() {
                                         </tbody>
                                     </table>
                                 </div>
-                                
+
                                 {/* Pagination */}
                                 <div style={styles.pagination}>
                                     {(() => {
-                                        const filteredCount = books.filter(b => 
-                                            b.title.toLowerCase().includes(search.toLowerCase()) || 
+                                        const filteredCount = books.filter(b =>
+                                            b.title.toLowerCase().includes(search.toLowerCase()) ||
                                             b.author.toLowerCase().includes(search.toLowerCase())
                                         ).length;
                                         const totalPages = Math.ceil(filteredCount / booksPerPage);
@@ -902,9 +920,9 @@ export default function App() {
                                         }
                                         for (let i = startPage; i <= endPage; i++) {
                                             buttons.push(
-                                                <button 
-                                                    key={i} 
-                                                    onClick={() => setCurrentPage(i)} 
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setCurrentPage(i)}
                                                     style={currentPage === i ? styles.activePageButton : styles.pageButton}
                                                 >
                                                     {i}
@@ -967,7 +985,7 @@ export default function App() {
                                                         </td>
                                                         <td style={styles.td}>
                                                             {!b.returnDate && (
-                                                                <button 
+                                                                <button
                                                                     onClick={() => returnBook(b.id)}
                                                                     disabled={loading}
                                                                     style={{ ...styles.button, backgroundColor: '#059669' }}
@@ -1004,10 +1022,10 @@ export default function App() {
                                                 const daysOverdue = o.dueDate && !o.returnDate ? Math.max(0, Math.floor((new Date() - new Date(o.dueDate)) / (1000 * 60 * 60 * 24))) : 0;
                                                 const fine = daysOverdue > 0 ? daysOverdue * 5 : 0;
                                                 return (
-                                                    <div key={i} style={{ 
-                                                        padding: '12px', 
-                                                        backgroundColor: '#fef2f2', 
-                                                        borderRadius: '8px', 
+                                                    <div key={i} style={{
+                                                        padding: '12px',
+                                                        backgroundColor: '#fef2f2',
+                                                        borderRadius: '8px',
                                                         marginBottom: '8px',
                                                         border: '1px solid #fecaca'
                                                     }}>
@@ -1020,9 +1038,9 @@ export default function App() {
                                                 );
                                             }
                                             return (
-                                                <div key={i} style={{ 
-                                                    padding: '8px 12px', 
-                                                    backgroundColor: '#f8fafc', 
+                                                <div key={i} style={{
+                                                    padding: '8px 12px',
+                                                    backgroundColor: '#f8fafc',
                                                     borderRadius: '6px',
                                                     marginBottom: '4px',
                                                     fontSize: '14px',
@@ -1033,9 +1051,9 @@ export default function App() {
                                             );
                                         })}
                                         {overdues.length === 0 && (
-                                            <div style={{ 
-                                                textAlign: 'center', 
-                                                color: '#059669', 
+                                            <div style={{
+                                                textAlign: 'center',
+                                                color: '#059669',
                                                 fontStyle: 'italic',
                                                 padding: '20px'
                                             }}>
@@ -1050,10 +1068,10 @@ export default function App() {
                                     <h3 style={{ ...styles.sectionTitle, fontSize: '1.25rem', marginBottom: '12px' }}>💡 Recommended Books</h3>
                                     <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                         {[...(recommendations.popularRecommendations || []), ...(recommendations.genreRecommendations || [])].map((b, i) => (
-                                            <div key={b.id || i} style={{ 
-                                                padding: '10px 12px', 
-                                                backgroundColor: '#eff6ff', 
-                                                borderRadius: '8px', 
+                                            <div key={b.id || i} style={{
+                                                padding: '10px 12px',
+                                                backgroundColor: '#eff6ff',
+                                                borderRadius: '8px',
                                                 marginBottom: '8px',
                                                 border: '1px solid #bfdbfe'
                                             }}>
@@ -1062,9 +1080,9 @@ export default function App() {
                                             </div>
                                         ))}
                                         {(!recommendations.popularRecommendations?.length && !recommendations.genreRecommendations?.length) && (
-                                            <div style={{ 
-                                                textAlign: 'center', 
-                                                color: '#64748b', 
+                                            <div style={{
+                                                textAlign: 'center',
+                                                color: '#64748b',
                                                 fontStyle: 'italic',
                                                 padding: '20px'
                                             }}>
@@ -1079,9 +1097,9 @@ export default function App() {
                                     <h3 style={{ ...styles.sectionTitle, fontSize: '1.25rem', marginBottom: '12px' }}>📋 Your Activity Log</h3>
                                     <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                         {auditLogs.map(log => (
-                                            <div key={log.id} style={{ 
-                                                padding: '8px 12px', 
-                                                backgroundColor: '#f8fafc', 
+                                            <div key={log.id} style={{
+                                                padding: '8px 12px',
+                                                backgroundColor: '#f8fafc',
                                                 borderRadius: '6px',
                                                 marginBottom: '6px',
                                                 fontSize: '13px',
@@ -1093,9 +1111,9 @@ export default function App() {
                                             </div>
                                         ))}
                                         {auditLogs.length === 0 && (
-                                            <div style={{ 
-                                                textAlign: 'center', 
-                                                color: '#64748b', 
+                                            <div style={{
+                                                textAlign: 'center',
+                                                color: '#64748b',
                                                 fontStyle: 'italic',
                                                 padding: '20px'
                                             }}>
@@ -1147,7 +1165,7 @@ export default function App() {
                                                         </td>
                                                         <td style={styles.td}>
                                                             {r.status === 'PENDING' && (
-                                                                <button 
+                                                                <button
                                                                     onClick={async () => {
                                                                         setMessage('');
                                                                         setLoading(true);
@@ -1199,7 +1217,13 @@ export default function App() {
                                         setMessage('✅ Book issued successfully!');
                                     } catch (err) {
                                         console.error('DEBUG: axiosAuth POST /borrowings error', err);
-                                        setMessage('❌ Offline issue failed');
+                                        if (err?.response?.status === 409 && err?.response?.data?.message?.includes('already borrowed')) {
+                                            setMessage('❌ This user has already borrowed this book.');
+                                        } else if (err?.response?.data?.message) {
+                                            setMessage('❌ ' + err.response.data.message);
+                                        } else {
+                                            setMessage('❌ Offline issue failed');
+                                        }
                                     } finally {
                                         setLoading(false);
                                     }
@@ -1212,72 +1236,72 @@ export default function App() {
                                     <div style={styles.form}>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Title *</label>
-                                            <input 
-                                                required 
-                                                placeholder="Enter book title" 
-                                                value={bookForm.title} 
+                                            <input
+                                                required
+                                                placeholder="Enter book title"
+                                                value={bookForm.title}
                                                 onChange={e => setBookForm(f => ({ ...f, title: e.target.value }))}
                                                 style={styles.input}
                                             />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Author *</label>
-                                            <input 
-                                                required 
-                                                placeholder="Enter author name" 
-                                                value={bookForm.author} 
+                                            <input
+                                                required
+                                                placeholder="Enter author name"
+                                                value={bookForm.author}
                                                 onChange={e => setBookForm(f => ({ ...f, author: e.target.value }))}
                                                 style={styles.input}
                                             />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Year *</label>
-                                            <input 
-                                                required 
-                                                type="number" 
-                                                min={1000} 
-                                                max={3000} 
-                                                placeholder="Publication year" 
-                                                value={bookForm.publicationYear || ''} 
+                                            <input
+                                                required
+                                                type="number"
+                                                min={1000}
+                                                max={3000}
+                                                placeholder="Publication year"
+                                                value={bookForm.publicationYear || ''}
                                                 onChange={e => setBookForm(f => ({ ...f, publicationYear: parseInt(e.target.value) }))}
                                                 style={styles.input}
                                             />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Genre *</label>
-                                            <input 
-                                                required 
-                                                placeholder="Enter genre" 
-                                                value={bookForm.genre || ''} 
+                                            <input
+                                                required
+                                                placeholder="Enter genre"
+                                                value={bookForm.genre || ''}
                                                 onChange={e => setBookForm(f => ({ ...f, genre: e.target.value }))}
                                                 style={styles.input}
                                             />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>ISBN *</label>
-                                            <input 
-                                                required 
-                                                placeholder="Enter ISBN" 
-                                                value={bookForm.isbn} 
+                                            <input
+                                                required
+                                                placeholder="Enter ISBN"
+                                                value={bookForm.isbn}
                                                 onChange={e => setBookForm(f => ({ ...f, isbn: e.target.value }))}
                                                 style={styles.input}
                                             />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', color: '#374151' }}>Available Copies *</label>
-                                            <input 
-                                                required 
-                                                type="number" 
-                                                min={1} 
-                                                placeholder="Number of copies" 
-                                                value={bookForm.availableCopies} 
+                                            <input
+                                                required
+                                                type="number"
+                                                min={1}
+                                                placeholder="Number of copies"
+                                                value={bookForm.availableCopies}
                                                 onChange={e => setBookForm(f => ({ ...f, availableCopies: parseInt(e.target.value) }))}
                                                 style={styles.input}
                                             />
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                                        <button 
+                                        <button
                                             type="submit"
                                             disabled={loading}
                                             style={{
@@ -1291,7 +1315,7 @@ export default function App() {
                                             {loading ? '⏳ Processing...' : (editBook ? '✏️ Update Book' : '➕ Add Book')}
                                         </button>
                                         {editBook && (
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => {
                                                     setEditBook(null);
@@ -1308,9 +1332,9 @@ export default function App() {
                             {/* Book Table for Librarian */}
                             <div style={styles.card}>
                                 <h2 style={styles.sectionTitle}>📚 Book Inventory</h2>
-                                <input 
-                                    placeholder="🔍 Search books by title or author..." 
-                                    value={search} 
+                                <input
+                                    placeholder="🔍 Search books by title or author..."
+                                    value={search}
                                     onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                                     style={styles.searchInput}
                                 />
@@ -1330,8 +1354,8 @@ export default function App() {
                                         </thead>
                                         <tbody>
                                             {(() => {
-                                                const filtered = books.filter(b => 
-                                                    b.title.toLowerCase().includes(search.toLowerCase()) || 
+                                                const filtered = books.filter(b =>
+                                                    b.title.toLowerCase().includes(search.toLowerCase()) ||
                                                     b.author.toLowerCase().includes(search.toLowerCase())
                                                 );
                                                 const start = (currentPage - 1) * booksPerPage;
@@ -1343,12 +1367,12 @@ export default function App() {
                                                         <td style={styles.td}>{b.author}</td>
                                                         <td style={styles.td}>{b.publicationYear}</td>
                                                         <td style={styles.td}>
-                                                            <span style={{ 
-                                                                backgroundColor: '#f0f9ff', 
-                                                                color: '#0369a1', 
-                                                                padding: '2px 8px', 
-                                                                borderRadius: '12px', 
-                                                                fontSize: '12px' 
+                                                            <span style={{
+                                                                backgroundColor: '#f0f9ff',
+                                                                color: '#0369a1',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '12px',
+                                                                fontSize: '12px'
                                                             }}>
                                                                 {b.genre}
                                                             </span>
@@ -1364,7 +1388,7 @@ export default function App() {
                                                         </td>
                                                         <td style={styles.td}>
                                                             <div style={{ display: 'flex', gap: '6px' }}>
-                                                                <button 
+                                                                <button
                                                                     onClick={() => handleEditBook(b)}
                                                                     style={{ ...styles.buttonSecondary, backgroundColor: '#7c3aed' }}
                                                                     onMouseEnter={e => e.target.style.backgroundColor = '#6d28d9'}
@@ -1372,7 +1396,7 @@ export default function App() {
                                                                 >
                                                                     ✏️ Edit
                                                                 </button>
-                                                                <button 
+                                                                <button
                                                                     onClick={() => handleDeleteBook(b.id)}
                                                                     disabled={loading}
                                                                     style={styles.buttonDanger}
@@ -1389,12 +1413,12 @@ export default function App() {
                                         </tbody>
                                     </table>
                                 </div>
-                                
+
                                 {/* Pagination */}
                                 <div style={styles.pagination}>
                                     {(() => {
-                                        const filteredCount = books.filter(b => 
-                                            b.title.toLowerCase().includes(search.toLowerCase()) || 
+                                        const filteredCount = books.filter(b =>
+                                            b.title.toLowerCase().includes(search.toLowerCase()) ||
                                             b.author.toLowerCase().includes(search.toLowerCase())
                                         ).length;
                                         const totalPages = Math.ceil(filteredCount / booksPerPage);
@@ -1410,9 +1434,9 @@ export default function App() {
                                         }
                                         for (let i = startPage; i <= endPage; i++) {
                                             buttons.push(
-                                                <button 
-                                                    key={i} 
-                                                    onClick={() => setCurrentPage(i)} 
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setCurrentPage(i)}
                                                     style={currentPage === i ? styles.activePageButton : styles.pageButton}
                                                 >
                                                     {i}
@@ -1473,6 +1497,7 @@ export default function App() {
                                     <table style={styles.table}>
                                         <thead>
                                             <tr>
+                                                <th style={styles.th}>ID</th>
                                                 <th style={styles.th}>Member</th>
                                                 <th style={styles.th}>Member ID</th>
                                                 <th style={styles.th}>Book</th>
@@ -1498,6 +1523,7 @@ export default function App() {
                                                     <tr key={b.id} style={{
                                                         backgroundColor: b.returnDate ? '#f8fafc' : (daysOverdue > 0 ? '#fef2f2' : 'white')
                                                     }}>
+                                                        <td style={styles.td}>{b.id}</td>
                                                         <td style={{ ...styles.td, fontWeight: '500' }}>{memberName}</td>
                                                         <td style={styles.td}>#{memberId}</td>
                                                         <td style={styles.td}>{books.find(book => book.id === b.bookId)?.title || `Book #${b.bookId}`}</td>
@@ -1532,9 +1558,9 @@ export default function App() {
                                 <h2 style={styles.sectionTitle}>📋 System Audit Trail</h2>
                                 <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                                     {auditLogs.map(log => (
-                                        <div key={log.id} style={{ 
-                                            padding: '12px 16px', 
-                                            backgroundColor: '#f8fafc', 
+                                        <div key={log.id} style={{
+                                            padding: '12px 16px',
+                                            backgroundColor: '#f8fafc',
                                             borderRadius: '8px',
                                             marginBottom: '8px',
                                             fontSize: '14px',
@@ -1545,9 +1571,9 @@ export default function App() {
                                         </div>
                                     ))}
                                     {auditLogs.length === 0 && (
-                                        <div style={{ 
-                                            textAlign: 'center', 
-                                            color: '#64748b', 
+                                        <div style={{
+                                            textAlign: 'center',
+                                            color: '#64748b',
                                             fontStyle: 'italic',
                                             padding: '40px'
                                         }}>
@@ -1560,7 +1586,7 @@ export default function App() {
                     )}
                 </>
             )}
-            
+
             {/* Footer */}
             <div style={{
                 marginTop: '40px',
@@ -1571,7 +1597,7 @@ export default function App() {
                 borderTop: '1px solid #e2e8f0'
             }}>
                 <p style={{ margin: 0 }}>
-                    📚 Library Management System • Built with React & Spring Boot • 
+                    📚 Library Management System • Built with React & Spring Boot •
                     <span style={{ fontWeight: '500' }}> Professional Edition</span>
                 </p>
             </div>

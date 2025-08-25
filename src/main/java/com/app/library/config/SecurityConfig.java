@@ -51,6 +51,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/books").hasRole("LIBRARIAN")
                 .requestMatchers(HttpMethod.PUT, "/api/books/**").hasRole("LIBRARIAN")
                 .requestMatchers(HttpMethod.DELETE, "/api/books/**").hasRole("LIBRARIAN")
+                // Also allow /books endpoints for LIBRARIAN (for legacy/frontend compatibility)
+                .requestMatchers(HttpMethod.GET, "/books", "/books/**").hasAnyRole("USER", "LIBRARIAN")
+                .requestMatchers(HttpMethod.POST, "/books").hasRole("LIBRARIAN")
+                .requestMatchers(HttpMethod.PUT, "/books/**").hasRole("LIBRARIAN")
+                .requestMatchers(HttpMethod.DELETE, "/books/**").hasRole("LIBRARIAN")
                 // Book requests: Users can create, Librarians can manage
                 .requestMatchers(HttpMethod.POST, "/api/request-book").hasRole("USER")
                 .requestMatchers(HttpMethod.GET, "/api/request-book").hasAnyRole("USER", "LIBRARIAN")

@@ -1,4 +1,7 @@
 package com.app.library.controller;
+import com.app.library.service.BookService;
+
+
 
 import com.app.library.model.Book;
 import com.app.library.model.User;
@@ -21,6 +24,52 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api")
 public class LibraryController {
+    @Autowired
+    private BookService bookService;
+    // ==================== Book Endpoints Proxy ====================
+
+    // Proxy GET /api/books to /books
+    @GetMapping("/books")
+    public ResponseEntity<List<Book>> getAllBooksProxy() {
+        return ResponseEntity.ok(bookService.findAllBooks());
+    }
+
+    // Proxy GET /api/books/{id} to /books/{id}
+    @GetMapping("/books/{id}")
+    public ResponseEntity<Book> getBookByIdProxy(@PathVariable Long id) {
+        Optional<Book> book = bookService.findBookById(id);
+        return book.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // Proxy POST /api/books to /books
+    @PostMapping("/books")
+    public ResponseEntity<Book> createBookProxy(@RequestBody Book book) {
+        Book created = bookService.saveBook(book);
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
+    }
+
+    // Proxy PUT /api/books/{id} to /books/{id}
+    @PutMapping("/books/{id}")
+    public ResponseEntity<Book> updateBookProxy(@PathVariable Long id, @RequestBody Book book) {
+        Optional<Book> existing = bookService.findBookById(id);
+        if (!existing.isPresent()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        book.setId(id);
+        Book updated = bookService.saveBook(book);
+        return new ResponseEntity<>(updated, HttpStatus.OK);
+    }
+
+    // Proxy DELETE /api/books/{id} to /books/{id}
+    @DeleteMapping("/books/{id}")
+    public ResponseEntity<Void> deleteBookProxy(@PathVariable Long id) {
+        Optional<Book> existing = bookService.findBookById(id);
+        if (!existing.isPresent()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        bookService.deleteBook(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
 
     // Create a logger instance
     private static final Logger logger = LoggerFactory.getLogger(LibraryController.class);
