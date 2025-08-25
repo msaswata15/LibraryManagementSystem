@@ -1,4 +1,3 @@
-
 // --- Professional CSS Styles ---
 const styles = {
     container: {
@@ -414,6 +413,10 @@ export default function App() {
     });
     const [token, setToken] = useState(() => window.localStorage.getItem('jwt_token') || '');
 
+    // State for OfflineReturnForm to persist across re-renders
+    const [offlineReturnUserQuery, setOfflineReturnUserQuery] = useState('');
+    const [offlineReturnSelectedUser, setOfflineReturnSelectedUser] = useState(null);
+
     // Persist user and token to localStorage on change
     useEffect(() => {
         if (user && token) {
@@ -565,7 +568,156 @@ export default function App() {
         setMessage('👋 Logged out successfully');
     };
 
-    // ...existing code...
+    // --- OfflineReturnForm component ---
+    function OfflineReturnForm({
+        users,
+        borrowings,
+        onReturn,
+        userQuery: controlledUserQuery,
+        setUserQuery: controlledSetUserQuery,
+        selectedUser: controlledSelectedUser,
+        setSelectedUser: controlledSetSelectedUser
+    }) {
+        const [borrowId, setBorrowId] = React.useState('');
+        const [showUserSuggestions, setShowUserSuggestions] = React.useState(false);
+        const [userBorrowings, setUserBorrowings] = React.useState([]);
+        const [returning, setReturning] = React.useState(false);
+        // Fallback to internal state if not controlled
+        const [internalUserQuery, setInternalUserQuery] = React.useState('');
+        const [internalSelectedUser, setInternalSelectedUser] = React.useState(null);
+        const userQuery = controlledUserQuery !== undefined ? controlledUserQuery : internalUserQuery;
+        const setUserQuery = controlledSetUserQuery !== undefined ? controlledSetUserQuery : setInternalUserQuery;
+        const selectedUser = controlledSelectedUser !== undefined ? controlledSelectedUser : internalSelectedUser;
+        const setSelectedUser = controlledSetSelectedUser !== undefined ? controlledSetSelectedUser : setInternalSelectedUser;
+
+        // Find user by username
+        const safeQuery = (userQuery || '').toLowerCase();
+        const filteredUsers = users.filter(u =>
+            (u.username && u.username.toLowerCase().includes(safeQuery)) ||
+            (u.name && u.name.toLowerCase().includes(safeQuery))
+        );
+
+        React.useEffect(() => {
+            if (selectedUser) {
+                setUserBorrowings(borrowings.filter(b => String(b.memberId) === String(selectedUser.id) && !b.returnDate));
+            } else {
+                setUserBorrowings([]);
+            }
+        }, [selectedUser, borrowings]);
+
+        return (
+            <div style={{ marginBottom: 24 }}>
+                <form onSubmit={async e => {
+                    e.preventDefault();
+                    if (!borrowId || returning) return;
+                    setReturning(true);
+                    await onReturn(borrowId);
+                    setBorrowId(''); // Only clear the borrowId field
+                    setReturning(false);
+                }} style={{ display: 'flex', gap: 16, alignItems: 'end', marginBottom: 12 }} autoComplete="off">
+                    <div>
+                        <label style={{ display: 'block', marginBottom: 6, fontWeight: 500, color: '#374151' }}>Return by Borrow ID:</label>
+                        <input
+                            type="number"
+                            value={borrowId}
+                            onChange={e => setBorrowId(e.target.value)}
+                            placeholder="Enter Borrowing ID..."
+                            style={styles.input}
+                        />
+                    </div>
+                    <button type="submit" style={{ ...styles.button, minWidth: 120 }} disabled={!borrowId || returning}>Return</button>
+                </form>
+                <div style={{ margin: '16px 0', fontWeight: 500, color: '#374151' }}>OR</div>
+                <div style={{ position: 'relative', marginBottom: 12 }}>
+                    <label style={{ display: 'block', marginBottom: 6, fontWeight: 500, color: '#374151' }}>Return by Username:</label>
+                    <input
+                        type="text"
+                        value={userQuery}
+                        onChange={e => {
+                            setUserQuery(e.target.value);
+                            setShowUserSuggestions(true);
+                            setSelectedUser(null);
+                        }}
+                        onFocus={() => setShowUserSuggestions(true)}
+                        placeholder="Search user..."
+                        style={styles.input}
+                        autoComplete="off"
+                    />
+                    {showUserSuggestions && userQuery && (
+                        <ul style={{
+                            position: 'absolute',
+                            zIndex: 10,
+                            background: 'white',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            width: '100%',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            listStyle: 'none',
+                            margin: '4px 0 0 0',
+                            padding: 0,
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                            {filteredUsers.map(u => (
+                                <li key={u.id} style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                                    onMouseDown={() => {
+                                        setUserQuery(u.username + (u.name ? ` (${u.name})` : ''));
+                                        setSelectedUser(u);
+                                        setShowUserSuggestions(false);
+                                    }}
+                                    onMouseEnter={e => e.target.style.backgroundColor = '#f8fafc'}
+                                    onMouseLeave={e => e.target.style.backgroundColor = 'white'}>
+                                    <div style={{ fontWeight: 500 }}>{u.username}</div>
+                                    {u.name && <div style={{ fontSize: 12, color: '#64748b' }}>{u.name}</div>}
+                                </li>
+                            ))}
+                            {filteredUsers.length === 0 && (
+                                <li style={{ padding: '12px 16px', color: '#64748b', fontStyle: 'italic' }}>No users found</li>
+                            )}
+                        </ul>
+                    )}
+                </div>
+                {selectedUser && userBorrowings.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                        <div style={{ fontWeight: 500, marginBottom: 6 }}>Active Borrowings for {selectedUser.username}:</div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}>
+                            <thead>
+                                <tr style={{ background: '#f1f5f9' }}>
+                                    <th style={{ padding: 8, border: '1px solid #e2e8f0' }}>Borrow ID</th>
+                                    <th style={{ padding: 8, border: '1px solid #e2e8f0' }}>Book</th>
+                                    <th style={{ padding: 8, border: '1px solid #e2e8f0' }}>Borrow Date</th>
+                                    <th style={{ padding: 8, border: '1px solid #e2e8f0' }}>Due Date</th>
+                                    <th style={{ padding: 8, border: '1px solid #e2e8f0' }}>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {userBorrowings.map(b => (
+                                    <tr key={b.id}>
+                                        <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>{b.id}</td>
+                                        <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>{b.bookTitle || b.book?.title || b.bookId}</td>
+                                        <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>{b.borrowDate}</td>
+                                        <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>{b.dueDate}</td>
+                                        <td style={{ padding: 8, border: '1px solid #e2e8f0' }}>
+                                            <button style={styles.button} disabled={returning} onClick={async () => {
+                                                if (returning) return;
+                                                setReturning(true);
+                                                await onReturn(b.id);
+                                                setReturning(false);
+                                            }}>Return</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                {selectedUser && userBorrowings.length === 0 && (
+                    <div style={{ color: '#64748b', fontStyle: 'italic', marginTop: 8 }}>No active borrowings for this user.</div>
+                )}
+            </div>
+        );
+    }
+
     // Handler for direct book request from table
     const handleRequestBook = async (bookId) => {
         setMessage('');
@@ -1175,6 +1327,8 @@ export default function App() {
                                                                             // Refresh requests after approval
                                                                             const resp = await axiosAuth.get(`${API}/api/request-book`);
                                                                             setRequests(resp.data);
+                                                                            // Reload page to refresh all data
+                                                                            setTimeout(() => window.location.reload(), 1000);
                                                                         } catch (err) {
                                                                             if (err.response && err.response.status === 400 && err.response.data && typeof err.response.data === 'string' && err.response.data.includes('No available copies')) {
                                                                                 setMessage('❌ Request rejected: No available copies');
@@ -1215,6 +1369,8 @@ export default function App() {
                                         const resp = await axiosAuth.post(`${API}/borrowings`, { userId, bookId });
                                         console.log('DEBUG: axiosAuth POST /borrowings response', resp);
                                         setMessage('✅ Book issued successfully!');
+                                        // Reload page to refresh all data
+                                        setTimeout(() => window.location.reload(), 1000);
                                     } catch (err) {
                                         console.error('DEBUG: axiosAuth POST /borrowings error', err);
                                         if (err?.response?.status === 409 && err?.response?.data?.message?.includes('already borrowed')) {
@@ -1581,6 +1737,30 @@ export default function App() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* Offline Return Interface */}
+                            <div style={styles.card}>
+                                <h2 style={styles.sectionTitle}>📤 Offline Book Return</h2>
+                                <OfflineReturnForm
+                                    users={users}
+                                    borrowings={borrowings}
+                                    onReturn={async (borrowId) => {
+                                        setMessage('');
+                                        setLoading(true);
+                                        try {
+                                            await returnBook(borrowId);
+                                        } catch {
+                                            setMessage('❌ Return failed');
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    }}
+                                    userQuery={offlineReturnUserQuery}
+                                    setUserQuery={setOfflineReturnUserQuery}
+                                    selectedUser={offlineReturnSelectedUser}
+                                    setSelectedUser={setOfflineReturnSelectedUser}
+                                />
                             </div>
                         </>
                     )}
