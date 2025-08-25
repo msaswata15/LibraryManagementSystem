@@ -1322,6 +1322,17 @@ export default function App() {
                                                                         setMessage('');
                                                                         setLoading(true);
                                                                         try {
+                                                                            // Check if user already has an active borrowing for this book
+                                                                            const activeBorrowing = borrowings.some(b =>
+                                                                                (String(b.userId) === String(r.userId) || String(b.memberId) === String(r.userId)) &&
+                                                                                String(b.bookId) === String(r.bookId) &&
+                                                                                !b.returnDate
+                                                                            );
+                                                                            if (activeBorrowing) {
+                                                                                setMessage('❌ This user has already borrowed this book.');
+                                                                                setLoading(false);
+                                                                                return;
+                                                                            }
                                                                             await axiosAuth.put(`${API}/api/request-book/${r.id}/approve`);
                                                                             setMessage('✅ Request approved successfully');
                                                                             // Refresh requests after approval
