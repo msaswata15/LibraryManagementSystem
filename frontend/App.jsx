@@ -449,19 +449,16 @@ export default function App() {
             axiosAuth.get(`${API}/users`).then(r => setUsers(r.data)).catch(() => { });
             axiosAuth.get(`${API}/books`).then(r => setBooks(r.data)).catch(() => { });
 
-            // Only fetch user-specific data for USER role
             if (user.role === 'USER') {
                 axiosAuth.get(`${API}/users/${user.id || 1}/overdue-notifications`).then(r => setOverdues(r.data)).catch(() => { });
                 axiosAuth.get(`${API}/books/recommended?userId=${user.id || 1}`).then(r => setRecommendations(r.data)).catch(() => { });
                 axiosAuth.get(`${API}/audit-logs/user/${user.id || 1}`).then(r => setAuditLogs(r.data)).catch(() => { });
             }
-            // Fetch all pending book requests for librarians
             if (user.role === 'LIBRARIAN') {
                 axiosAuth.get(`${API}/api/request-book`).then(r => setRequests(r.data)).catch(() => { });
+                axiosAuth.get(`${API}/audit-logs`).then(r => setAuditLogs(r.data)).catch(() => { });
             }
-            // Fetch borrowings for both roles
             axiosAuth.get(`${API}/borrowings`).then(r => setBorrowings(r.data)).catch(() => { });
-            // Fines for each borrowing
             borrowings.forEach(b => {
                 axiosAuth.get(`${API}/users/borrowing/${b.id}/fine`).then(r => setFines(f => ({ ...f, [b.id]: r.data }))).catch(() => { });
             });
