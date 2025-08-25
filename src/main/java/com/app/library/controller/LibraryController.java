@@ -1,7 +1,7 @@
 package com.app.library.controller;
 
 import com.app.library.model.Book;
-import com.app.library.model.Member;
+import com.app.library.model.User;
 import com.app.library.model.BorrowingRecord;
 import com.app.library.service.LibraryService;
 
@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+@CrossOrigin(origins = "http://localhost:5173")
 
 @RestController
 @RequestMapping("/api")
@@ -29,53 +30,53 @@ public class LibraryController {
 
 
 
-    // ==================== Member Endpoints ====================
+    // ==================== User Endpoints ====================
 
-    // Get all members
+    // Get all users
     @GetMapping("/members")
-    public ResponseEntity<List<Member>> getAllMembers() {
-        List<Member> members = libraryService.getAllMembers();
-        logger.info("The members in the system " + members);
-        return new ResponseEntity<>(members, HttpStatus.OK);
+    public ResponseEntity<List<User>> getAllUsers() {
+        List<User> users = libraryService.getAllUsers();
+        logger.info("The users in the system " + users);
+        return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
-    // Get a member by ID
+    // Get a user by ID
     @GetMapping("/members/{id}")
-    public ResponseEntity<Member> getMemberById(@PathVariable Long id) {
-        Optional<Member> member = libraryService.getMemberById(id);
-        logger.info("The member you retrieved "+member);
-        return member.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        Optional<User> user = libraryService.getUserById(id);
+        logger.info("The user you retrieved "+user);
+        return user.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    // Add a new member
+    // Add a new user
     @PostMapping("/members")
-    public ResponseEntity<Member> addMember(@RequestBody Member member) {
-        libraryService.addMember(member);
-        logger.info("The member has been added ");
-        return new ResponseEntity<>(member, HttpStatus.CREATED);
+    public ResponseEntity<User> addUser(@RequestBody User user) {
+        libraryService.addUser(user);
+        logger.info("The user has been added ");
+        return new ResponseEntity<>(user, HttpStatus.CREATED);
     }
 
-    // Update a member
+    // Update a user
     @PutMapping("/members/{id}")
-    public ResponseEntity<Member> updateMember(@PathVariable Long id, @RequestBody Member updatedMember) {
-        if (!libraryService.getMemberById(id).isPresent()) {
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User updatedUser) {
+        if (!libraryService.getUserById(id).isPresent()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        updatedMember.setId(id);
-        libraryService.updateMember(updatedMember);
-        logger.info("The member has been updated "+updatedMember);
-        return new ResponseEntity<>(updatedMember, HttpStatus.OK);
+        updatedUser.setId(id);
+        libraryService.updateUser(updatedUser);
+        logger.info("The user has been updated "+updatedUser);
+        return new ResponseEntity<>(updatedUser, HttpStatus.OK);
     }
 
-    // Delete a member
+    // Delete a user
     @DeleteMapping("/members/{id}")
-    public ResponseEntity<Void> deleteMember(@PathVariable Long id) {
-        if (!libraryService.getMemberById(id).isPresent()) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        if (!libraryService.getUserById(id).isPresent()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        libraryService.deleteMember(id);
-        logger.info("The member has been deleted "+id);
+        libraryService.deleteUser(id);
+        logger.info("The user has been deleted "+id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 

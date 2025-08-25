@@ -1,20 +1,42 @@
+
 package com.app.library.controller;
 
 
 import com.app.library.model.BookRequest;
+import com.app.library.model.Book;
 import com.app.library.service.BookRequestService;
+import com.app.library.service.BookService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @RestController
+@CrossOrigin(origins = "http://localhost:5173")
 @RequestMapping("/api/request-book")
 public class BookRequestController {
     @Autowired
     private BookRequestService bookRequestService;
 
+    @Autowired
+    private BookService bookService;
+        // Librarian: Get all pending book requests
+        @GetMapping
+        public ResponseEntity<?> getAllPendingRequests() {
+            var requests = bookRequestService.getAllPendingRequests();
+            return ResponseEntity.ok(requests);
+        }
+
+
     @PostMapping
     public ResponseEntity<String> requestBook(@RequestBody BookRequestDto request) {
+        Book book = bookService.findBookById(request.bookId).orElse(null);
+        if (book == null) {
+            return ResponseEntity.badRequest().body("Invalid bookId");
+        }
+        if (book.getAvailableCopies() <= 0) {
+            return ResponseEntity.badRequest().body("Book is not available");
+        }
         BookRequest req = new BookRequest(request.bookId, request.username);
         bookRequestService.saveRequest(req);
         return ResponseEntity.ok("Book request submitted for librarian approval.");
@@ -34,6 +56,20 @@ public class BookRequestController {
             bookRequestService.markAsNotified(req);
         }
         return ResponseEntity.ok(available);
+    }
+
+    // Approve a book request
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<?> approveRequest(@PathVariable Long id) {
+        var updated = bookRequestService.approveRequest(id);
+        return ResponseEntity.ok(updated);
+    }
+
+    // Reject a book request
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<?> rejectRequest(@PathVariable Long id) {
+        var updated = bookRequestService.rejectRequest(id);
+        return ResponseEntity.ok(updated);
     }
 
     // DTO for book request

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 import com.app.library.model.User;
 import com.app.library.service.CustomUserDetailsService;
@@ -21,6 +22,7 @@ import com.app.library.util.JwtUtil;
 
 @RestController
 @RequestMapping("/auth")
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     @Autowired
@@ -44,9 +46,17 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
             );
             log.debug("Authentication success for username: {}", user.getUsername());
+            
+            // Get the user from database to include role info
+            User dbUser = userDetailsService.findByUsername(user.getUsername());
             String token = jwtUtil.generateToken(user.getUsername());
-            Map<String, String> response = new HashMap<>();
+            
+            Map<String, Object> response = new HashMap<>();
             response.put("token", token);
+            response.put("role", dbUser.getRole());
+            response.put("id", dbUser.getId());
+            response.put("username", dbUser.getUsername());
+            
             return ResponseEntity.ok(response);
         } catch (AuthenticationException e) {
             log.warn("Authentication failed for username: {} - {}", user.getUsername(), e.getMessage());

@@ -1,11 +1,10 @@
-
 package com.app.library.service;
 
 import com.app.library.model.Book;
-import com.app.library.model.Member;
+import com.app.library.model.User;
 import com.app.library.model.BorrowingRecord;
 import com.app.library.repository.BookRepository;
-import com.app.library.repository.MemberRepository;
+import com.app.library.repository.UserRepository;
 import com.app.library.repository.BorrowingRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,32 +17,28 @@ public class LibraryService {
     @Autowired
     private BookRepository bookRepository;
     @Autowired
-    private MemberRepository memberRepository;
+    private UserRepository memberRepository; // TODO: rename variable to userRepository in later cleanup
     @Autowired
     private BorrowingRecordRepository borrowingRecordRepository;
 
-
-
-
-    // ==================== Member Methods ====================
-
-    public List<Member> getAllMembers() {
+    // ==================== User Methods ====================
+    public List<User> getAllUsers() {
         return memberRepository.findAll();
     }
-
-    public Optional<Member> getMemberById(Long id) {
+    
+    public Optional<User> getUserById(Long id) {
         return memberRepository.findById(id);
     }
-
-    public Member addMember(Member member) {
-        return memberRepository.save(member);
+    
+    public User addUser(User user) {
+        return memberRepository.save(user);
     }
 
-    public Member updateMember(Member updatedMember) {
-        return memberRepository.save(updatedMember);
+    public User updateUser(User user) {
+        return memberRepository.save(user);
     }
 
-    public void deleteMember(Long id) {
+    public void deleteUser(Long id) {
         memberRepository.deleteById(id);
     }
 
@@ -71,37 +66,67 @@ public class LibraryService {
     
 
     // Borrow a book (create a new borrowing record)
-    public void borrowBook(BorrowingRecord record) {
+    public BorrowingRecord borrowBook(BorrowingRecord record) {
         // Validate that book exists and has available copies
         Book book = record.getBook();
         if (book == null || book.getId() == null) {
             throw new IllegalArgumentException("Book or Book ID cannot be null");
         }
-        
-        // Find the actual book in our storage by ID
-    Optional<Book> actualBook = bookRepository.findById(book.getId());
-        if (!actualBook.isPresent()) {
+
+        Optional<Book> actualBook = bookRepository.findById(book.getId());
+        if (actualBook.isEmpty()) {
             throw new IllegalArgumentException("Book does not exist");
         }
         book = actualBook.get();
-        record.setBook(book); // Update record with the actual book from storage
-        
-        // Validate that member exists
-        Member member = record.getMember();
+        if (book.getAvailableCopies() <= 0) {
+            throw new IllegalStateException("No available copies for this book");
+        }
+
+        // Validate that user exists
+        User member = record.getMember();
         if (member == null || member.getId() == null) {
             throw new IllegalArgumentException("Member or Member ID cannot be null");
         }
-        
-        // Find the actual member in our storage by ID
-        Optional<Member> actualMember = getMemberById(member.getId());
-        if (!actualMember.isPresent()) {
+
+        Optional<User> actualMember = getUserById(member.getId());
+        if (actualMember.isEmpty()) {
             throw new IllegalArgumentException("Member does not exist");
         }
-    throw new UnsupportedOperationException("Implement using repository");
+
+        // Decrement available copies and persist book
+        book.setAvailableCopies(book.getAvailableCopies() - 1);
+        bookRepository.save(book);
+
+        // Persist borrowing record
+        record.setBook(book);
+        record.setMember(actualMember.get());
+        if (record.getBorrowDate() == null) {
+            record.setBorrowDate(LocalDate.now());
+        }
+        if (record.getDueDate() == null) {
+            record.setDueDate(record.getBorrowDate().plusDays(14));
+        }
+        return borrowingRecordRepository.save(record);
     }
 
     // Return a book (update the borrowing record with the return date)
-    public void returnBook(Long recordId, LocalDate returnDate) {
-        throw new UnsupportedOperationException("Implement using repository");
+    public BorrowingRecord returnBook(Long recordId, LocalDate returnDate) {
+        Optional<BorrowingRecord> recordOpt = borrowingRecordRepository.findById(recordId);
+        if (recordOpt.isEmpty()) {
+            throw new IllegalArgumentException("Borrowing record not found");
+        }
+        BorrowingRecord record = recordOpt.get();
+        if (record.getReturnDate() != null) {
+            throw new IllegalStateException("Book already returned");
+        }
+        // Set return date
+        record.setReturnDate(returnDate != null ? returnDate : LocalDate.now());
+        // Increment available copies
+        Book book = record.getBook();
+        if (book != null) {
+            book.setAvailableCopies(book.getAvailableCopies() + 1);
+            bookRepository.save(book);
+        }
+        return borrowingRecordRepository.save(record);
     }
 }

@@ -51,10 +51,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/books").hasRole("LIBRARIAN")
                 .requestMatchers(HttpMethod.PUT, "/api/books/**").hasRole("LIBRARIAN")
                 .requestMatchers(HttpMethod.DELETE, "/api/books/**").hasRole("LIBRARIAN")
-                // Only users can request a book
-                .requestMatchers("/api/request-book").hasRole("USER")
-                // Only librarians can manage members, borrow, return
-                .requestMatchers("/api/borrow", "/api/return/**", "/api/members/**").hasRole("LIBRARIAN")
+                // Book requests: Users can create, Librarians can manage
+                .requestMatchers(HttpMethod.POST, "/api/request-book").hasRole("USER")
+                .requestMatchers(HttpMethod.GET, "/api/request-book").hasAnyRole("USER", "LIBRARIAN")
+                .requestMatchers(HttpMethod.PUT, "/api/request-book/**").hasRole("LIBRARIAN")
+                // Only librarians can manage members, borrow; allow both roles to return
+                .requestMatchers("/api/borrow", "/api/members/**").hasRole("LIBRARIAN")
+                .requestMatchers("/api/return/**").hasAnyRole("USER", "LIBRARIAN")
+                // Allow borrowings endpoints
+                .requestMatchers(HttpMethod.POST, "/borrowings").hasRole("LIBRARIAN")
+                .requestMatchers(HttpMethod.GET, "/borrowings").hasAnyRole("USER", "LIBRARIAN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

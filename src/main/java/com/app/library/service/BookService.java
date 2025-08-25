@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class BookService {
@@ -38,8 +37,10 @@ public class BookService {
         List<Long> bookIds = borrowingRecordRepository.findMostBorrowedBookIds();
         List<Book> books = new ArrayList<>();
         for (Long id : bookIds) {
-            bookRepository.findById(id).ifPresent(books::add);
-            if (books.size() >= limit) break;
+            if (id != null) {  // Add null check
+                bookRepository.findById(id).ifPresent(books::add);
+                if (books.size() >= limit) break;
+            }
         }
         return books;
     }
@@ -48,15 +49,19 @@ public class BookService {
         List<String> genres = borrowingRecordRepository.findBorrowedGenresByMember(memberId);
         Set<Long> recommendedBookIds = new LinkedHashSet<>();
         for (String genre : genres) {
-            List<Long> ids = borrowingRecordRepository.findBookIdsByGenre(genre);
-            recommendedBookIds.addAll(ids);
+            if (genre != null) {  // Add null check for genre
+                List<Long> ids = borrowingRecordRepository.findBookIdsByGenre(genre);
+                recommendedBookIds.addAll(ids);
+            }
         }
         // Remove books already borrowed by the user
         // (Optional: implement if you want to avoid recommending already borrowed books)
         List<Book> books = new ArrayList<>();
         for (Long id : recommendedBookIds) {
-            bookRepository.findById(id).ifPresent(books::add);
-            if (books.size() >= limit) break;
+            if (id != null) {  // Add null check
+                bookRepository.findById(id).ifPresent(books::add);
+                if (books.size() >= limit) break;
+            }
         }
         return books;
     }

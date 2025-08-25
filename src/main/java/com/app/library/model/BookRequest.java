@@ -12,12 +12,22 @@ public class BookRequest {
     private String username;
     private boolean notified; // true if user has been notified of availability
 
+    @Enumerated(EnumType.STRING)
+    private Status status = Status.PENDING;
+
+    public enum Status {
+        PENDING,
+        APPROVED,
+        REJECTED
+    }
+
     public BookRequest() {}
 
     public BookRequest(Long bookId, String username) {
         this.bookId = bookId;
         this.username = username;
         this.notified = false;
+        this.status = Status.PENDING;
     }
 
     // Getters and setters
@@ -29,4 +39,6 @@ public class BookRequest {
     public void setUsername(String username) { this.username = username; }
     public boolean isNotified() { return notified; }
     public void setNotified(boolean notified) { this.notified = notified; }
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
 }

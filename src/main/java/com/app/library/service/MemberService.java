@@ -1,6 +1,6 @@
 package com.app.library.service;
 
-import com.app.library.model.Member;
+import com.app.library.model.User;
 import com.app.library.repository.MemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,15 +13,15 @@ public class MemberService {
     @Autowired
     private MemberRepository memberRepository;
 
-    public List<Member> findAllMembers() {
+    public List<User> findAllMembers() {
         return memberRepository.findAll();
     }
 
-    public Optional<Member> findMemberById(Long id) {
+    public Optional<User> findMemberById(Long id) {
         return memberRepository.findById(id);
     }
 
-    public Member saveMember(Member member) {
+    public User saveMember(User member) {
         return memberRepository.save(member);
     }
 

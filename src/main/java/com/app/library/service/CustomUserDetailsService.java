@@ -1,5 +1,6 @@
 package com.app.library.service;
 
+import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -32,6 +33,21 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     public User save(User user) {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        
+        // Set membership dates if not already set
+        if (user.getStartDate() == null) {
+            user.setStartDate(LocalDate.now());
+        }
+        if (user.getEndDate() == null) {
+            // Set membership to expire in 1 year for regular users
+            user.setEndDate(LocalDate.now().plusYears(1));
+        }
+        
         return userRepository.save(user);
+    }
+
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 }

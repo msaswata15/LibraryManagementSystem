@@ -10,4 +10,5 @@ import java.util.List;
 public interface BookRequestRepository extends JpaRepository<BookRequest, Long> {
     List<BookRequest> findByBookIdAndNotifiedFalse(Long bookId);
     List<BookRequest> findByUsernameAndNotifiedFalse(String username);
+    List<BookRequest> findByStatus(com.app.library.model.BookRequest.Status status);
 }

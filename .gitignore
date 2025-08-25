@@ -1,33 +1,48 @@
-HELP.md
+
+# Java
 target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+*.class
+*.jar
+*.war
+*.ear
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Maven
+logs/
+.mvn/
+!/.mvn/wrapper/maven-wrapper.jar
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# IDEs
+.idea/
 *.iml
 *.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+*.iws
+.swp
+.swo
+.bak
+.tmp
+.log
 .vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node/React
+frontend/node_modules/
+frontend/dist/
+
+# Python
+*.pyc
+__pycache__/
+
+# Misc
+.env
+*.sqlite
+*.db
+*.log
+
+# VSCode
+.vscode/
+
+# Others
+bulk_insert_books.py

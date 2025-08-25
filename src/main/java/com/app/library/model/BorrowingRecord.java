@@ -7,7 +7,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
 import java.time.LocalDate;
+import com.app.library.model.User;
 
 @Entity
 public class BorrowingRecord {
@@ -20,7 +22,8 @@ public class BorrowingRecord {
     private Book book;
 
     @ManyToOne
-    private Member member;
+    @JoinColumn(name = "member_id")
+    private User member;
 
     private LocalDate borrowDate;
     private LocalDate returnDate;
@@ -30,7 +33,7 @@ public class BorrowingRecord {
     public BorrowingRecord() {}
 
     // Parameterized constructor
-    public BorrowingRecord(Book book, Member member, LocalDate borrowDate, LocalDate dueDate) {
+    public BorrowingRecord(Book book, User member, LocalDate borrowDate, LocalDate dueDate) {
         this.book = book;
         this.member = member;
         this.borrowDate = borrowDate;
@@ -54,11 +57,11 @@ public class BorrowingRecord {
         this.book = book;
     }
 
-    public Member getMember() {
+    public User getMember() {
         return member;
     }
 
-    public void setMember(Member member) {
+    public void setMember(User member) {
         this.member = member;
     }
 
