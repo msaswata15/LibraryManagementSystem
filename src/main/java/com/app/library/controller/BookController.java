@@ -65,6 +65,9 @@ public class BookController {
                     book.setTitle(bookDetails.getTitle());
                     book.setAuthor(bookDetails.getAuthor());
                     book.setIsbn(bookDetails.getIsbn());
+                    book.setPublicationYear(bookDetails.getPublicationYear());
+                    book.setGenre(bookDetails.getGenre());
+                    book.setAvailableCopies(bookDetails.getAvailableCopies());
                     return ResponseEntity.ok(bookService.saveBook(book));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());

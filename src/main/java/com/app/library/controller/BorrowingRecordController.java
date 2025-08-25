@@ -6,6 +6,7 @@ import com.app.library.model.User;
 import com.app.library.service.BorrowingRecordService;
 import com.app.library.service.BookService;
 import com.app.library.service.UserService;
+import com.app.library.service.LibraryService;
 import com.app.library.dto.BorrowingRecordRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,9 @@ public class BorrowingRecordController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private LibraryService libraryService;
 
     @GetMapping
     public List<BorrowingRecord> getAllBorrowings() {
@@ -70,20 +74,26 @@ public class BorrowingRecordController {
 
     @PutMapping("/{id}")
     public ResponseEntity<BorrowingRecord> updateBorrowing(@PathVariable Long id, @RequestBody BorrowingRecord recordDetails) {
-        return borrowingRecordService.findBorrowingById(id)
-                .map(record -> {
-                    // If returnDate is being set (book returned), increment availableCopies
-                    if (record.getReturnDate() == null && recordDetails.getReturnDate() != null) {
-                        Book book = record.getBook();
-                        book.setAvailableCopies(book.getAvailableCopies() + 1);
-                        bookService.saveBook(book);
-                    }
-                    record.setBorrowDate(recordDetails.getBorrowDate());
-                    record.setReturnDate(recordDetails.getReturnDate());
-                    record.setDueDate(recordDetails.getDueDate());
-                    return ResponseEntity.ok(borrowingRecordService.saveBorrowing(record));
-                })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        // If returnDate is being set, use LibraryService.returnBook to ensure availableCopies is incremented
+        Optional<BorrowingRecord> recordOpt = borrowingRecordService.findBorrowingById(id);
+        if (recordOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        BorrowingRecord record = recordOpt.get();
+        if (record.getReturnDate() == null && recordDetails.getReturnDate() != null) {
+            // Use libraryService to handle return logic (including incrementing availableCopies)
+            BorrowingRecord updated = libraryService.returnBook(id, recordDetails.getReturnDate());
+            return ResponseEntity.ok(updated);
+        } else {
+            // Not a return, just update fields
+            record.setBorrowDate(recordDetails.getBorrowDate());
+            record.setDueDate(recordDetails.getDueDate());
+            // Don't overwrite returnDate unless explicitly set
+            if (recordDetails.getReturnDate() != null) {
+                record.setReturnDate(recordDetails.getReturnDate());
+            }
+            return ResponseEntity.ok(borrowingRecordService.saveBorrowing(record));
+        }
     }
 
     @DeleteMapping("/{id}")
