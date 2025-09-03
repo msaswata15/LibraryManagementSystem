@@ -46,13 +46,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**", "/api/auth/**", "/actuator/health", "/health").permitAll()
                 // Allow GET for books to both USER and LIBRARIAN
-                .requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**").hasAnyRole("USER", "LIBRARIAN")
+                .requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**").permitAll()
                 // Only LIBRARIAN can add, update, or delete books
                 .requestMatchers(HttpMethod.POST, "/api/books").hasRole("LIBRARIAN")
                 .requestMatchers(HttpMethod.PUT, "/api/books/**").hasRole("LIBRARIAN")
                 .requestMatchers(HttpMethod.DELETE, "/api/books/**").hasRole("LIBRARIAN")
                 // Also allow /books endpoints for LIBRARIAN (for legacy/frontend compatibility)
-                .requestMatchers(HttpMethod.GET, "/books", "/books/**").hasAnyRole("USER", "LIBRARIAN")
+                .requestMatchers(HttpMethod.GET, "/books", "/books/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/books").hasRole("LIBRARIAN")
                 .requestMatchers(HttpMethod.PUT, "/books/**").hasRole("LIBRARIAN")
                 .requestMatchers(HttpMethod.DELETE, "/books/**").hasRole("LIBRARIAN")

@@ -4,7 +4,9 @@ package com.app.library.service;
 import com.app.library.model.Book;
 import com.app.library.repository.BookRepository;
 import com.app.library.repository.BorrowingRecordRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -25,6 +27,7 @@ public class BookService {
     @Autowired
     private BorrowingRecordRepository borrowingRecordRepository;
 
+    @Cacheable("books")
     public List<Book> findAllBooks() {
         return bookRepository.findAll();
     }
