@@ -72,6 +72,10 @@ public class BookController {
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
+    @GetMapping(params = {"title", "author"})
+    public List<Book> searchBooks(@RequestParam String title, @RequestParam String author) {
+    return bookService.searchBooks(title, author);
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {

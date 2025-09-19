@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Version;
 
 @Entity
 
@@ -18,6 +19,9 @@ public class Book {
     private String genre;
     private int availableCopies;
     private String isbn;
+
+    @Version
+    private Integer version;
 
     // Default constructor
     public Book() {}

@@ -14,6 +14,19 @@ import java.util.*;
 @Service
 public class BookService {
 
+        // Search books by title and/or author
+        public List<Book> searchBooks(String title, String author) {
+            if ((title == null || title.isEmpty()) && (author == null || author.isEmpty())) {
+                return bookRepository.findAll();
+            }
+            if (title != null && !title.isEmpty() && author != null && !author.isEmpty()) {
+                return bookRepository.findByTitleContainingIgnoreCaseAndAuthorContainingIgnoreCase(title, author);
+            } else if (title != null && !title.isEmpty()) {
+                return bookRepository.findByTitleContainingIgnoreCase(title);
+            } else {
+                return bookRepository.findByAuthorContainingIgnoreCase(author);
+            }
+        }
     /**
      * Returns true if the book is referenced by any borrowing records.
      */

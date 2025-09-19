@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.JoinColumn;
 import java.time.LocalDate;
+import jakarta.persistence.Version;
 import com.app.library.model.User;
 
 @Entity
@@ -28,6 +29,9 @@ public class BorrowingRecord {
     private LocalDate borrowDate;
     private LocalDate returnDate;
     private LocalDate dueDate;
+    
+    @Version
+    private Integer version;
 
     // Default constructor
     public BorrowingRecord() {}
